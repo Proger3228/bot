@@ -9,7 +9,7 @@ const bot = new Botact({
     confirmation: 'c03cd5c9'
 });
 
-bot.on(ctx => console.log(ctx));
+bot.on(ctx => bot.reply(ctx.user_id, ctx.body));
 
 server.use(BodyParser.json());
 
