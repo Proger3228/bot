@@ -15,6 +15,4 @@ server.use(BodyParser.json());
 
 server.post('/', bot.listen);
 
-server.get("/", (_,res) => res.send("HELLO!"))
-
 server.listen(process.env.PORT, () => console.log("Server is working on port: 80"));
