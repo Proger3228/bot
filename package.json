@@ -6,7 +6,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "supervisor index",
-    "start": "node index"
+    "start": "node index",
+    "logs": "heroku logs --tail"
   },
   "author": "",
   "license": "ISC",

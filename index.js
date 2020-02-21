@@ -14,6 +14,7 @@ bot.on(ctx => bot.reply(ctx.user_id, ctx.body));
 server.use(BodyParser.json());
 
 server.post('/', bot.listen);
+server.get('/test', bot.listen);
 server.get('/', (req,res) => {
     res.end("Hello")
 });
