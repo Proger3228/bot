@@ -18,4 +18,4 @@ server.get('/', (req,res) => {
     res.end("Hello")
 });
 
-server.listen(process.env.PORT, () => console.log("Server is working on port: 80"));
+server.listen(process.env.PORT || 80, () => console.log("Server is working on port: 80"));
