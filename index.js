@@ -3,7 +3,7 @@ const BodyParser = require ('body-parser');
 const { Botact } = require ('botact');
 
 
-const server = express ();
+const server = express();
 const bot = new Botact({
     token: 'e5100c829eadf1102b0ecafcc47e0ca90f16f8b3f8c7193dc3899be1d7f0f7a938437bfcb8f79bd6f982b',
     confirmation: 'c03cd5c9'
