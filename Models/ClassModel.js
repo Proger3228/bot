@@ -1,21 +1,6 @@
 const mongoose = require("mongoose");
-
-const Lessons = [
-    "Математика",
-    "Английский",
-    "Русский",
-    "Экономика",
-    "География",
-    "Физика",
-    "Алгебра",
-    "Геометрия",
-    "Литература",
-    "История",
-    "Обществознание",
-    "Астрономия",
-    "ОБЖ",
-    "Информатика",
-];
+const uuid4 = require("uuid4");
+const Lessons = require("./utils");
 
 const classSchema = mongoose.Schema({
     students: {
@@ -31,11 +16,11 @@ const classSchema = mongoose.Schema({
         validate: {
             validator: (name) => {
                 if (/(\d)+([A-Z])+/.test(name)) {
-                    if ((name.match(/\d/)[0] !== "0" && +name.match(/\d/)[0] <= 11) || name === "0Z") {
+                    if ((name.match(/\d/)[0] !== "0" && +name.match(/\d/)[0] <= 11 && +name.match(/\d/)[0] === ~~+name.match(/\d/)[0]) || name === "0Z") {
                         return true;
                     }
                 }
-                return false;
+                return false ;
             },
             message: "Class name must match digit + letter"
         },
@@ -48,7 +33,7 @@ const classSchema = mongoose.Schema({
                 required: true,
                 type: String,
                 validate: {
-                    validator: (lessonName) => Lessons.includes(lessonName),
+                    validator: (lessonName) => Lessons.includes(lessonName) ,
                     message: "Lesson must have one of defined names"
                 }
             },
@@ -70,7 +55,7 @@ const classSchema = mongoose.Schema({
                     required: true,
                     type: String,
                     validate: {
-                        validator: (lessonName) => Lessons.includes(lessonName),
+                        validator: (lessonName) => Lessons.includes(lessonName) ,
                         message: "Lesson must have one of defined names"
                     }
                 },
@@ -89,11 +74,13 @@ const classSchema = mongoose.Schema({
     }],
     roleUpCodes: {
         type: [String],
-        default: []
+        default: [],
+        validate: {
+            validator: (arrayOfCodes) => arrayOfCodes.every(code => uuid4.valid(code)),
+            message: "All roleUp codes must be valid uuid4 codes"
+        }
     }
 });
 classSchema.plugin(require("mongoose-autopopulate"));
-
-module.exports.Lessons = Lessons;
 
 module.exports = mongoose.model("Class", classSchema);

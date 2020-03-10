@@ -1,11 +1,7 @@
 const mongoose = require("mongoose");
+const {Roles} = require("./utils");
 
-const Roles = {
-    student: "STUDENT",
-    admin: "ADMIN",
-    contributor: "CONTRIBUTOR"
-};
-
+//TODO add validate to vk id (must be integer (not float))
 const studentSchema = mongoose.Schema({
     class: {
         type: mongoose.Schema.ObjectId,
@@ -30,9 +26,7 @@ const studentSchema = mongoose.Schema({
         default: true
     }
 });
+
 studentSchema.plugin(require("mongoose-autopopulate"));
-
-
-module.exports.Roles = Roles;
 
 module.exports = mongoose.model("Student", studentSchema);
