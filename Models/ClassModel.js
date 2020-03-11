@@ -15,7 +15,7 @@ const classSchema = mongoose.Schema({
         type: String,
         validate: {
             validator: (name) => {
-                if (/(\d)+([A-Z])+/.test(name)) {
+                if (/(\d)+([A-Z]|[А-Я])/.test(name)) {
                     if ((name.match(/\d/)[0] !== "0" && +name.match(/\d/)[0] <= 11 && +name.match(/\d/)[0] === ~~+name.match(/\d/)[0]) || name === "0Z") {
                         return true;
                     }

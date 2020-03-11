@@ -6,7 +6,6 @@ const renderLessons = () => {
     return Lessons.map((e, i) => `${i}: ${e}`).join("\n");
 };
 
-
 const formMessage = (...messageSections) => {
     return messageSections.join("\n\n");
 };

@@ -293,6 +293,7 @@ class DataBase {
         try {
             if (name) {
                 if (typeof name === "string") {
+                    mongoose.set("debug", true);
                     const newClass = new _Class({
                         name
                     });
@@ -305,6 +306,7 @@ class DataBase {
                 throw new TypeError("name parameter is required")
             }
         } catch (e) {
+            console.log(e);
             if (e instanceof TypeError) throw e;
             console.error(e);
             return null;

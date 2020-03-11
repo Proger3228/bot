@@ -23,72 +23,47 @@ mongoose.connect("mongodb+srv://Damir:CLv4QEJJrfZp4BC0@botdata-sp9px.mongodb.net
     useCreateIndex: true
 }, () => console.log("Mongoose connected"));
 
-const adminOptionsScene = new Scene("adminOptions",
+const adminPanelScene = new Scene('adminPanel',
     (ctx) => {
-        const {message: {user_id}, scene: {enter, next}} = ctx;
-        if (isAdmin(user_id)) {
-            next();
+        if (isAdmin(ctx.message.user_id)) {
+            ctx.scene.next();
             ctx.reply(renderAdminMenu());
         } else {
-            enter("beginning");
+            ctx.scene.leave();
             ctx.reply("Ты не админ чтоб такое делать")
         }
     },
     (ctx) => {
-        const {message: {body}, scene: {enter, leave}} = ctx;
-        switch (body) {
+        switch (ctx.message.body) {
             case "4": {
-                enter("createClass");
+                ctx.reply("Вы выбрали создание класса");
+                ctx.scene.enter("createClass");
                 break;
             }
             default: {
                 ctx.reply("Такого варианта не было");
-                leave();
-                enter("adminOptions");
                 break;
             }
         }
-        leave();
-    }
+    },
 );
 
-const creatingClassScene = new Scene("createClass",
+const createClassScene = new Scene('createClass',
     (ctx) => {
-        const {message: {user_id}, scene: {enter, next}} = ctx;
-        if (isAdmin(user_id)) {
-            next();
-            ctx.reply("Введите имя класса (цифра буква)");
-        } else {
-            enter("beginning");
-            ctx.reply("Ты не админ чтоб такое делать")
-        }
+        ctx.scene.next();
+        ctx.reply("Введите имя класса, с английской , буквой (A - A, Б - B, В - V ...)");
     },
     (ctx) => {
         const {message: {body}, scene: {leave, enter}} = ctx;
         const spacelessClassName = body.replace(/\s*/g, "");
-        console.log(body, spacelessClassName, /\d+[a-z]/i.test(spacelessClassName));
         if (/\d+[a-z]/i.test(spacelessClassName)) {
             DataBase.createClass(spacelessClassName)
                 .then(result => {
-                    console.log(result);
                     if (result) {
                         leave();
                         ctx.reply("Класс успешно создан");
                     } else {
-                        console.log("Все плохо");
-                        const {message: {user_id}} = ctx;
-                        let buttons = [
-                            [
-                                Markup.button("Посмотреть дз", "primary")
-                            ]
-                        ];
-                        if (isAdmin(user_id)) {
-                            buttons = renderAdminKeyBoard(buttons)
-                        }
-
-                        ctx.reply("Sup", null, Markup
-                            .keyboard(buttons)
-                        )
+                        ctx.reply("Создание класса не удалось 😭");
                     } //исправить (вынести в функцию\превратить старт в сцену\еще что то)
                 })
                 .catch(err => {
@@ -99,11 +74,11 @@ const creatingClassScene = new Scene("createClass",
             enter("createClass");
             ctx.reply("Неправильный формат ввода (должна быть цифра и потом буква)");
         }
-    }
-);//not works
+    },
+);
 
 const session = new Session();
-const stage = new Stage(adminOptionsScene, creatingClassScene);
+const stage = new Stage(adminPanelScene,createClassScene);
 
 bot.use(session.middleware());
 bot.use(stage.middleware());
@@ -124,9 +99,7 @@ bot.command("start", (ctx) => {
     )
 });
 
-bot.command(botCommands.adminPanel, ({scene: {enter}}) => {
-    enter("adminOptions")
-});
+bot.command(botCommands.adminPanel, (ctx) => ctx.scene.enter('adminPanel'));
 
 bot.command(/расписание/i, (ctx) => {
     try {
