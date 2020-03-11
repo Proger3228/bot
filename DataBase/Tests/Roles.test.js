@@ -4,9 +4,7 @@ const
     Class = require("../../Models/ClassModel"),
     {DataBase} = require("../DataBase"),
     {Roles} = require("../../Models/utils"),
-    //{MockStudent, MockClass} = require("./mocks"),
     uuid4 = require("uuid4");
-const StudentModel = require("../../Models/StudentModel");
 
 const createTestData = async () => {
     const Class = await DataBase.createClass(Math.ceil(Math.random() * 10) + "A");
@@ -16,7 +14,6 @@ const createTestData = async () => {
     Class.students.push(Student._id);
     await Class.save();
     await Student.save();
-    // console.log(Student, await DataBase.getStudentBy_Id(Student._id));
     return {
         Student: await DataBase.getStudentBy_Id(Student._id),
         Class: await DataBase.getClassBy_Id(Class._id)
@@ -27,24 +24,14 @@ describe("generateNewRoleUpCode", () => {
     let MockStudent;
     let MockClass;
     beforeAll(async () => {
-        const connect = await mongoose.connect("mongodb+srv://Damir:CLv4QEJJrfZp4BC0@botdata-sp9px.mongodb.net/test?retryWrites=true&w=majority", {
+        await mongoose.connect("mongodb+srv://Damir:CLv4QEJJrfZp4BC0@botdata-sp9px.mongodb.net/test?retryWrites=true&w=majority", {
             useNewUrlParser: true,
             useCreateIndex: true,
             useUnifiedTopology: true
         }, (err) => console.log("Mongoose successfully connected"));
-        const newStudent = new Student({
-            vkId: Math.random() * 10
-        });
-        const newClass = new Class({
-            name: (Math.random() * 10 + 1) + "A",
-        });
-        newStudent.class = newClass._id;
-        newClass.students.push(newStudent._id);
-        await newStudent.save();
-        await newClass.save();
-        MockClass = await DataBase.getClassByName(newClass.name).then(res => res.toObject());
-        MockStudent = await DataBase.getStudentByVkId(newStudent.vkId).then(res => res.toObject());
-
+        const {Student: s, Class: c} = await createTestData();
+        MockClass = c;
+        MockStudent = s;
     });
     afterAll(async () => {
         await Class.deleteMany({});
@@ -53,8 +40,7 @@ describe("generateNewRoleUpCode", () => {
     });
     afterEach(async () => {
         const _class = await DataBase.getClassBy_Id(MockClass._id);
-        await _class.updateOne({roleUpCodes: []});
-        await _class.save();
+        _class.roleUpCodes = [];
     });
 
     it("should return valid uuid4 code", async () => {
@@ -80,6 +66,7 @@ describe("generateNewRoleUpCode", () => {
         await expect(code).toBeNull();
     });
     it("should add only one code", async () => {
+        mongoose.set("debug", true);
         const length = MockClass.roleUpCodes.length;
         await DataBase.generateNewRoleUpCode(MockClass.name);
 
@@ -96,18 +83,9 @@ describe("removeRoleUpCode", () => {
             useUnifiedTopology: true,
             useCreateIndex: true
         }, () => console.log("Mongoose successfully connected"));
-        const newStudent = new Student({
-            vkId: Math.random() * 10
-        });
-        const newClass = new Class({
-            name: (Math.random() * 10 + 1) + "A",
-        });
-        newStudent.class = newClass._id;
-        newClass.students.push(newStudent._id);
-        await newStudent.save();
-        await newClass.save();
-        MockClass = await DataBase.getClassByName(newClass.name).then(res => res.toObject());
-        MockStudent = await DataBase.getStudentByVkId(newStudent.vkId).then(res => res.toObject());
+        const {Student: s, Class: c} = await createTestData();
+        MockClass = c;
+        MockStudent = s;
     });
     afterAll(async () => {
         await Student.deleteMany({});
@@ -116,8 +94,7 @@ describe("removeRoleUpCode", () => {
     });
     afterEach(async () => {
         const _class = await DataBase.getClassBy_Id(MockClass._id);
-        await _class.updateOne({roleUpCodes: []});
-        await _class.save();
+        _class.roleUpCodes = [];
     });
 
     it("should return false if con`t find class by name", async () => {
@@ -134,11 +111,18 @@ describe("removeRoleUpCode", () => {
         await DataBase.removeRoleUpCode(MockClass.name, code);
         const classWithoutCode = await DataBase.getClassBy_Id(MockClass._id);
         await expect(classWithoutCode.roleUpCodes.includes(code)).toBe(false);
-    })
+    });
     it("should throw type error if code is not valid uuid4 code", async () => {
         return DataBase.removeRoleUpCode(MockClass.name, "not valid code")
             .catch(err => expect(err).toBeInstanceOf(TypeError))
     });
+    it("should remove only one code", async () => {
+        const code = await DataBase.generateNewRoleUpCode(MockClass.name);
+        const initialLength = (await DataBase.getClassBy_Id(MockClass._id)).roleUpCodes.length;
+        await DataBase.removeRoleUpCode(MockClass.name, code);
+        const newLength = (await DataBase.getClassBy_Id(MockClass._id)).roleUpCodes.length;
+        return expect(initialLength - 1).toBe(newLength);
+    })
 });
 
 describe("checkCodeValidity", () => {
@@ -150,18 +134,9 @@ describe("checkCodeValidity", () => {
             useUnifiedTopology: true,
             useCreateIndex: true
         }, () => console.log("Mongoose successfully connected"));
-        const newStudent = new Student({
-            vkId: Math.random() * 10
-        });
-        const newClass = new Class({
-            name: (Math.random() * 10 + 1) + "A",
-        });
-        newStudent.class = newClass._id;
-        newClass.students.push(newStudent._id);
-        await newStudent.save();
-        await newClass.save();
-        MockClass = await DataBase.getClassByName(newClass.name).then(res => res.toObject());
-        MockStudent = await DataBase.getStudentByVkId(newStudent.vkId).then(res => res.toObject());
+        const {Student: s, Class: c} = await createTestData();
+        MockClass = c;
+        MockStudent = s;
     });
     afterAll(async () => {
         await Student.deleteMany({});

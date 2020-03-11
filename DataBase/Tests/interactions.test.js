@@ -2,9 +2,7 @@ const
     mongoose = require("mongoose"),
     Student = require("../../Models/StudentModel"),
     Class = require("../../Models/ClassModel"),
-    {DataBase} = require("../DataBase"),
-    {toObject} = require("./utils"),
-    {Roles} = require("../../Models/utils");
+    {DataBase} = require("../DataBase");
 
 const createTestData = async () => {
     const Class = await DataBase.createClass(Math.ceil(Math.random() * 100) + "A");
