@@ -1,4 +1,4 @@
-const {Roles} = require("../Models/utils");
+const {Roles, Lessons} = require("../Models/utils");
 
 const _Student = require("../Models/StudentModel");
 const _Class = require("../Models/ClassModel");
@@ -24,8 +24,7 @@ class DataBase {
             console.error(e);
             return null
         }
-    };
-
+    }; //Генерирует и возвращает код для того что бы стать радактором, если не получилось возвращает null
     static async removeRoleUpCode(className, codeToBeRemoved) {
         try {
             if (uuid4.valid(codeToBeRemoved)) {
@@ -44,8 +43,7 @@ class DataBase {
             if (e instanceof TypeError) throw e;
             return false;
         }
-    };
-
+    }; //Убирает код из списка кодов класса
     static async activateCode(vkId, code) {
         try {
             if (uuid4.valid(code)) {
@@ -77,8 +75,7 @@ class DataBase {
             if (e instanceof TypeError) throw e;
             return false;
         }
-    };
-
+    }; //Активирует код - делает ученика редактором и убирает код и списка кодов класса
     static async checkCodeValidity(className, codeToBeChecked) {
         if (uuid4.valid(codeToBeChecked)) {
             const Class = await this.getClassByName(className);
@@ -90,8 +87,7 @@ class DataBase {
         } else {
             return false
         }
-    };
-
+    }; //Проверяет валидность кода - Правильного ли он формата и есть ли он в списке кодов класса
     static async backStudentToInitialRole(vkId) {
         try {
             if (vkId && typeof vkId === "number") {
@@ -110,7 +106,7 @@ class DataBase {
             console.error(e);
             return false;
         }
-    };
+    }; //Возвращает редактора к роли ученика
 
     //Interactions
     static async addStudentToClass(StudentVkId, className) {
@@ -130,8 +126,7 @@ class DataBase {
             console.log(e);
             return false;
         }
-    };
-
+    }; //Добавляет ученика в класс
     static async removeStudentFromClass(StudentVkId) {
         try {
             const Student = await DataBase.getStudentByVkId(StudentVkId);
@@ -150,8 +145,7 @@ class DataBase {
             console.error(e);
             return false;
         }
-    };
-
+    }; //Удаляет ученика из класса
     static async changeClass(StudentVkId, newClassName) {
         try {
             const Student = await this.getStudentByVkId(StudentVkId);
@@ -177,7 +171,7 @@ class DataBase {
         } catch (e) {
             return false;
         }
-    };
+    }; //Меняет класс ученика
 
     //Getters
     static async getStudentByVkId(vkId) {
@@ -196,8 +190,7 @@ class DataBase {
             if (e instanceof TypeError) throw e;
             return null;
         }
-    };
-
+    }; //Возвращает ученика по его id из vk
     static async getStudentBy_Id(_id) {
         try {
             if (typeof _id === "object" && isObjectId(_id)) _id = _id.toString();
@@ -215,8 +208,7 @@ class DataBase {
             if (e instanceof TypeError) throw e;
             return null;
         }
-    };
-
+    }; //Возвращает ученика по его _id (это чисто для разработки (так быстрее ищется))
     static async getClassByName(name) {
         try {
             if (name && typeof name === "string") {
@@ -233,8 +225,7 @@ class DataBase {
             if (e instanceof TypeError) throw e;
             return null;
         }
-    };
-
+    }; //Возвращает класс по его имени
     static async getClassBy_Id(_id) {
         try {
             if (typeof _id === "object" && isObjectId(_id)) _id = _id.toString();
@@ -252,21 +243,20 @@ class DataBase {
             if (e instanceof TypeError) throw e;
             return null;
         }
-    };
-
+    }; //Возвращает ученика по его _id (это чисто для разработки (так быстрее ищется))
     static async getAllContributors() {
-      try {
-          const contributors = await _Student.find({role: Roles.contributor});
+        try {
+            const contributors = await _Student.find({role: Roles.contributor});
 
-          if (contributors) {
-              return contributors;
-          } else {
-              return null;
-          }
-      } catch (e) {
-          return null;
-      }
-    };
+            if (contributors) {
+                return contributors;
+            } else {
+                return null;
+            }
+        } catch (e) {
+            return null;
+        }
+    }; //Возвращает список всех редакторов
 
     //Creators
     static async createStudent(vkId, class_id) {
@@ -287,13 +277,11 @@ class DataBase {
             console.error(e);
             return null;
         }
-    };
-
+    }; //Создает и возвращает ученика
     static async createClass(name) {
         try {
             if (name) {
                 if (typeof name === "string") {
-                    mongoose.set("debug", true);
                     const newClass = new _Class({
                         name
                     });
@@ -311,7 +299,78 @@ class DataBase {
             console.error(e);
             return null;
         }
+    }; //Создает и возвращает класс
+
+    //Homework
+    static async addHomeWork(className, lesson, task, expirationDate) {
+        try {
+            if (className && typeof className === "string") {
+                if (lesson && Lessons.includes(lesson)) {
+                    if (task.trim() && typeof task === "string") {
+                        if (expirationDate) {
+
+                        } else {
+
+                        }
+                    } else {
+                        throw new TypeError("Task must be non empty string");
+                    }
+                } else {
+                    throw new TypeError("Lesson must be in lessons list");
+                }
+            } else {
+                throw new TypeError("ClassName must be string");
+            }
+        } catch (e) {
+            if (e instanceof TypeError) throw e;
+            console.log(e);
+            return false;
+        }
+    } //Сначала нужно расписание
+
+    //Schedule
+    static lessonsIndexesToLessonsNames(lessonList, indexes) {
+        if (Array.isArray(lessonList) && lessonList.length && lessonList.every(el => typeof el === "string")) {
+            if (
+                Array.isArray(indexes) &&
+                indexes.length > 0 &&
+                indexes.every(lesson =>
+                    Array.isArray(lesson) &&
+                    lesson.every(Number.isInteger)
+                ) //lessonList должен быть массивом массивов целых чисел
+            ) {
+                if (lessonList.length - 1 < Math.max(...indexes.flat())) {
+                    throw new ReferenceError("Index in indexes array can`t be bigger than lesson list length")
+                }
+                return indexes.map(dayIdxs => dayIdxs.map(idx => lessonList[idx])) //превращает массив индексов в массив предметов
+            } else {
+                throw new TypeError("lessonsIndexesByDays must be array of arrays of integers");
+            }
+        } else {
+            throw new TypeError("LessonList must be array of strings");
+        }
     }
+
+    static async setSchedule(className, lessonList, lessonsIndexesByDays) {
+        try {
+            if (className && typeof className === "string") {
+                const Class = await this.getClassByName(className);
+                if (Class) {
+                    const newSchedule = this.lessonsIndexesToLessonsNames(lessonList, lessonsIndexesByDays);
+                    await Class.updateOne({schedule: newSchedule});
+                    return true;
+                } else {
+                    return false;
+                }
+            } else {
+                throw new TypeError("ClassName must be string");
+            }
+        } catch (e) {
+            if (e instanceof TypeError) throw e;
+            console.log(e);
+            return false;
+        }
+    } //Устонавливает расписание (1: список предметов, 2: имя класса, 3: массив массивов индексов уроков где индекс соответствует уроку в массиве(1) по дням недели)
 }
 
 module.exports.DataBase = DataBase;

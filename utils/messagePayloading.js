@@ -26,7 +26,7 @@ const renderAdminMenu = () => {
     ];
     return formMessage(
         "Админское меню",
-        adminOptions.map((e, i) => `${i + 1}: ${e}`).join("\n")
+        adminOptions.map((e, i) => `${i + 1}: ${e}`).join("\n").concat(`\n0: Назад`)
     );
 };
 

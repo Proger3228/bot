@@ -20,7 +20,7 @@ const classSchema = mongoose.Schema({
                         return true;
                     }
                 }
-                return false ;
+                return false;
             },
             message: "Class name must match digit + letter"
         },
@@ -33,7 +33,7 @@ const classSchema = mongoose.Schema({
                 required: true,
                 type: String,
                 validate: {
-                    validator: (lessonName) => Lessons.includes(lessonName) ,
+                    validator: (lessonName) => Lessons.includes(lessonName),
                     message: "Lesson must have one of defined names"
                 }
             },
@@ -49,19 +49,18 @@ const classSchema = mongoose.Schema({
         default: []
     },
     schedule: {
-        type: [[
-            {
-                name: {
-                    required: true,
-                    type: String,
-                    validate: {
-                        validator: (lessonName) => Lessons.includes(lessonName) ,
-                        message: "Lesson must have one of defined names"
+        type:
+            [
+                [
+                    {
+                        type: String,
+                        validate: {
+                            validator: (lessonName) => Lessons.includes(lessonName),
+                            message: "Lesson must have one of defined names"
+                        }
                     }
-                },
-                classRoom: String
-            }
-        ]],
+                ]
+            ],
         default: [],
         validate: {
             validator: (arr) => arr.length <= 7,
