@@ -2,6 +2,25 @@ const mongoose = require("mongoose");
 const uuid4 = require("uuid4");
 const Lessons = require("./utils");
 
+const homeWorkSchema = mongoose.Schema({
+    lesson: {
+        required: true,
+        type: String,
+        validate: {
+            validator: (lessonName) => Lessons.includes(lessonName),
+            message: "Lesson must have one of defined names"
+        }
+    },
+    task: {
+        required: true,
+        type: String
+    },
+    to: {
+        type: Date,
+        default: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7)
+    },
+    _id: false
+});
 const classSchema = mongoose.Schema({
     students: {
         type: [{
@@ -28,24 +47,7 @@ const classSchema = mongoose.Schema({
         unique: true
     },
     homework: {
-        type: [{
-            lesson: {
-                required: true,
-                type: String,
-                validate: {
-                    validator: (lessonName) => Lessons.includes(lessonName),
-                    message: "Lesson must have one of defined names"
-                }
-            },
-            task: {
-                required: true,
-                type: String
-            },
-            to: {
-                type: Date,
-                default: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7)
-            }
-        }],
+        type: [homeWorkSchema],
         default: []
     },
     schedule: {
@@ -61,7 +63,10 @@ const classSchema = mongoose.Schema({
                     }
                 ]
             ],
-        default: [],
+        default: [
+            [], [], [],
+            [], [], []
+        ],
         validate: {
             validator: (arr) => arr.length <= 7,
             message: "Schedule must contain only one item per day of a week"

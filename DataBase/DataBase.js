@@ -3,8 +3,8 @@ const {Roles, Lessons} = require("../Models/utils");
 const _Student = require("../Models/StudentModel");
 const _Class = require("../Models/ClassModel");
 const uuid4 = require("uuid4");
+const {isObjectId, findNextDayWithLesson, findNextLessonDate} = require("./Tests/stuff/utils");
 const mongoose = require("mongoose");
-const {isObjectId} = require("./Tests/utils");
 
 //TODO Replace returns of false and null to errors or error codes
 class DataBase {
@@ -302,15 +302,42 @@ class DataBase {
     }; //Создает и возвращает класс
 
     //Homework
-    static async addHomeWork(className, lesson, task, expirationDate) {
+    static async addHomework(className, lesson, task, expirationDate) {
         try {
             if (className && typeof className === "string") {
                 if (lesson && Lessons.includes(lesson)) {
                     if (task.trim() && typeof task === "string") {
-                        if (expirationDate) {
-
+                        const Class = await this.getClassByName(className);
+                        if (Class) {
+                            if (Class.schedule.flat().includes(lesson)) {
+                                if (expirationDate) {
+                                    if (expirationDate instanceof Date && expirationDate - Date.now() > 0) {
+                                        const newHomework = {
+                                            lesson,
+                                            task,
+                                            to: expirationDate
+                                        };
+                                        await Class.updateOne({homework: [...Class.homework, newHomework]});
+                                        return true;
+                                    } else {
+                                        throw new TypeError("Expiration date must be Date in the future");
+                                    }
+                                } else {
+                                    const nextLessonWeekDay = findNextDayWithLesson(Class.schedule, lesson, (new Date()).getDay() || 7); // 1 - 7
+                                    const nextLessonDate = findNextLessonDate(nextLessonWeekDay);
+                                    const newHomework = {
+                                        lesson,
+                                        task,
+                                        to: nextLessonDate
+                                    };
+                                    await Class.updateOne({homework: [...Class.homework, newHomework]});
+                                    return true;
+                                }
+                            } else {
+                                return false;
+                            }
                         } else {
-
+                            return false;
                         }
                     } else {
                         throw new TypeError("Task must be non empty string");
@@ -326,7 +353,7 @@ class DataBase {
             console.log(e);
             return false;
         }
-    } //Сначала нужно расписание
+    } //Добавляет жомашнее задание в класс
 
     //Schedule
     static lessonsIndexesToLessonsNames(lessonList, indexes) {

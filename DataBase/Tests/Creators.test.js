@@ -3,7 +3,7 @@ const
     Student = require("../../Models/StudentModel"),
     Class = require("../../Models/ClassModel"),
     {DataBase} = require("../DataBase");
-const {toObject} = require("./utils");
+const {toObject} = require("./stuff/utils");
 
 describe("createStudent", () => {
     beforeAll(async () => {
@@ -59,7 +59,7 @@ describe("createClass", () => {
         // mongoose.set("debug", true);
     });
     afterAll(async () => {
-        Class.delete();
+        Class.deleteMany({});
         await mongoose.disconnect();
     });
     it("should create new class", async () => {
