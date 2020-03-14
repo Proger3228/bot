@@ -6,21 +6,10 @@ const
 const {toObject} = require("./stuff/utils");
 
 describe("createStudent", () => {
-    beforeAll(async () => {
-        mongoose.connect(
-            "mongodb+srv://Damir:CLv4QEJJrfZp4BC0@botdata-sp9px.mongodb.net/test?retryWrites=true&w=majority",
-            {
-                useNewUrlParser: true,
-                useCreateIndex: true,
-                useUnifiedTopology: true
-            })
-        // mongoose.set("debug", true);
-    });
     afterAll(async () => {
-        Student.deleteMany({});
-        Class.deleteMany({});
-        await mongoose.disconnect();
+        await Student.deleteMany({});
     });
+
     it("should create new student", async () => {
         const vkId = Math.ceil(Math.random() * 100);
         const student = await DataBase.createStudent(vkId);
@@ -48,29 +37,20 @@ describe("createStudent", () => {
 });
 
 describe("createClass", () => {
-    beforeAll(async () => {
-        mongoose.connect(
-            "mongodb+srv://Damir:CLv4QEJJrfZp4BC0@botdata-sp9px.mongodb.net/test?retryWrites=true&w=majority",
-            {
-                useNewUrlParser: true,
-                useCreateIndex: true,
-                useUnifiedTopology: true
-            })
-        // mongoose.set("debug", true);
-    });
     afterAll(async () => {
-        Class.deleteMany({});
-        await mongoose.disconnect();
+        await Class.deleteMany({});
     });
+
     it("should create new class", async () => {
         const ClassName = Math.ceil(Math.random() * 10) + "A";
         const _class = await DataBase.createClass(ClassName);
+
         expect(_class).toBeTruthy();
         expect(_class.name).toBe(ClassName);
         expect(toObject(_class).students).toEqual([]);
         expect(toObject(_class).roleUpCodes).toEqual([]);
         expect(toObject(_class).homework).toEqual([]);
-        expect(toObject(_class).schedule).toEqual([]);
+        expect(toObject(_class).schedule).toEqual([[],[],[],[],[],[]]);
         expect(toObject(_class).changes).toEqual([]);
     });
     it("should throw TypeError if className is not defined", async () => {

@@ -1,29 +1,25 @@
 const
     mongoose = require("mongoose"),
     Student = require("../../Models/StudentModel"),
+    Class = require("../../Models/ClassModel"),
     {DataBase} = require("../DataBase"),
     {Roles} = require("../../Models/utils");
 
 
 //Getters by _id
 describe("getStudentBy_Id", () => {
+    let MockStudent;
     beforeAll(async () => {
-        await mongoose.connect("mongodb+srv://Damir:CLv4QEJJrfZp4BC0@botdata-sp9px.mongodb.net/test?retryWrites=true&w=majority", {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-            useCreateIndex: true
-        }, () => console.log("Mongoose successfully connected"));
+        MockStudent = await DataBase.createStudent(Math.ceil(Math.random() * 100));
     });
     afterAll(async () => {
-        Student.deleteMany({});
-        await mongoose.disconnect();
+        await Student.deleteMany({});
     });
 
     it("should return right model", async () => {
-        const newStudent = await DataBase.createStudent(Math.ceil(Math.random() * 100));
-        const student = await DataBase.getStudentBy_Id(newStudent._id);
+        const student = await DataBase.getStudentBy_Id(MockStudent._id);
 
-        return expect(student).toEqual(newStudent);
+        return expect(student).toEqual(MockStudent);
     });
     it("should null if _id is not in collection", async () => {
         const result = await DataBase.getStudentBy_Id("not even id");
@@ -40,23 +36,18 @@ describe("getStudentBy_Id", () => {
     });
 });
 describe("getClassBy_Id", () => {
+    let MockClass;
     beforeAll(async () => {
-        await mongoose.connect("mongodb+srv://Damir:CLv4QEJJrfZp4BC0@botdata-sp9px.mongodb.net/test?retryWrites=true&w=majority", {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-            useCreateIndex: true
-        }, () => console.log("Mongoose successfully connected"));
+        MockClass = await DataBase.createClass(Math.ceil(Math.random() * 10) + "A");
     });
     afterAll(async () => {
-        Student.deleteMany({});
-        await mongoose.disconnect();
+        await Class.deleteMany({});
     });
 
     it("should return right model", async () => {
-        const newClass = await DataBase.createClass(Math.ceil(Math.random() * 10) + "A");
-        const _class = await DataBase.getClassBy_Id(newClass._id);
+        const _class = await DataBase.getClassBy_Id(MockClass._id);
 
-        return expect(_class).toEqual(newClass);
+        return expect(_class).toEqual(MockClass);
     });
     it("should null if _id is not in collection", async () => {
         const result = await DataBase.getClassBy_Id("not and id");
@@ -75,24 +66,18 @@ describe("getClassBy_Id", () => {
 
 //Getters by properties
 describe("getStudentByVkId", () => {
+    let MockStudent;
     beforeAll(async () => {
-        await mongoose.connect("mongodb+srv://Damir:CLv4QEJJrfZp4BC0@botdata-sp9px.mongodb.net/test?retryWrites=true&w=majority", {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-            useCreateIndex: true
-        }, () => console.log("Mongoose successfully connected"));
+        MockStudent = await DataBase.createStudent(Math.ceil(Math.random() * 100));
     });
     afterAll(async () => {
-        Student.deleteMany({});
-        await mongoose.disconnect();
+        await Student.deleteMany({});
     });
 
     it("should return right model", async () => {
-        const newStudent = await DataBase.createStudent(Math.ceil(Math.random() * 100));
+        const student = await DataBase.getStudentByVkId(MockStudent.vkId);
 
-        const student = await DataBase.getStudentByVkId(newStudent.vkId);
-
-        return expect(student).toEqual(newStudent);
+        return expect(student).toEqual(MockStudent);
     });
     it("should null if vkId is not in collection", async () => {
         const result = await DataBase.getStudentByVkId(1488);
@@ -109,23 +94,18 @@ describe("getStudentByVkId", () => {
     });
 });
 describe("getClassByName", () => {
+    let MockClass;
     beforeAll(async () => {
-        await mongoose.connect("mongodb+srv://Damir:CLv4QEJJrfZp4BC0@botdata-sp9px.mongodb.net/test?retryWrites=true&w=majority", {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-            useCreateIndex: true
-        }, () => console.log("Mongoose successfully connected"));
+        MockClass = await DataBase.createClass(Math.ceil(Math.random() * 10) + "A");
     });
     afterAll(async () => {
-        Student.deleteMany({});
-        await mongoose.disconnect();
+        await Class.deleteMany({});
     });
 
     it("should return right model", async () => {
-        const newClass = await DataBase.createClass(Math.ceil(Math.random() * 10) + "A");
-        const _class = await DataBase.getClassByName(newClass.name);
+        const _class = await DataBase.getClassByName(MockClass.name);
 
-        return expect(_class).toEqual(newClass);
+        return expect(_class).toEqual(MockClass);
     });
     it("should null if _id is not in collection", async () => {
         const result = await DataBase.getClassByName("not even name");
@@ -145,28 +125,21 @@ describe("getClassByName", () => {
 //Others
 describe("getAllContributors", () => {
     beforeAll(async () => {
-        await mongoose.connect("mongodb+srv://Damir:CLv4QEJJrfZp4BC0@botdata-sp9px.mongodb.net/test?retryWrites=true&w=majority", {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-            useCreateIndex: true
-        }, () => console.log("Mongoose successfully connected"));
         const Student1 = await DataBase.createStudent(1);
         const Student2 = await DataBase.createStudent(2);
         await DataBase.createStudent(3);
-        Student1.role = Roles.contributor;
-        Student2.role = Roles.contributor;
-
-        return;
+        await Student1.updateOne({role: Roles.contributor});
+        await Student2.updateOne({role: Roles.contributor});
     });
     afterAll(async () => {
         await Student.deleteMany({});
-        await mongoose.disconnect();
     });
 
     it("should return array of contributors", async () => {
         const result = await DataBase.getAllContributors();
 
         expect(Array.isArray(result)).toBe(true);
+        expect(result.length).toBe(2);
         expect(result.every(st => st.vkId === 1 || st.vkId === 2)).toBe(true);
     });
 });

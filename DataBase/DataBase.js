@@ -54,7 +54,7 @@ class DataBase {
                         if (isValid) {
                             const removed = await this.removeRoleUpCode(Student.class.name, code);
                             if (removed) {
-                                Student.role = Roles.contributor;
+                                await Student.updateOne({role: Roles.contributor});
                                 return true;
                             } else {
                                 return false;
@@ -354,6 +354,24 @@ class DataBase {
             return false;
         }
     } //Добавляет жомашнее задание в класс
+    static async getHomework(className) {
+        try {
+            if (className && typeof className === "string") {
+                const Class = await this.getClassByName(className);
+                if (Class) {
+                    return Class.homework;
+                } else {
+                    return null;
+                }
+            } else {
+                throw new TypeError("ClassName must be string")
+            }
+        } catch (e) {
+            if (e instanceof TypeError) throw e;
+            console.log(e);
+            return null
+        }
+    }
 
     //Schedule
     static lessonsIndexesToLessonsNames(lessonList, indexes) {

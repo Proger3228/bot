@@ -53,18 +53,15 @@ describe("lessonsIndexesToLessonsNames", () => {
 describe("setSchedule", () => {
     let MockClass;
     beforeAll(async () => {
-        await mongoose.connect("mongodb+srv://Damir:CLv4QEJJrfZp4BC0@botdata-sp9px.mongodb.net/test?retryWrites=true&w=majority", {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-            useCreateIndex: true
-        }, () => console.log("Mongoose successfully connected"));
         MockClass = await DataBase.createClass("1B");
     });
     afterEach(async () => {
         const _class = await DataBase.getClassBy_Id(MockClass._id);
-        _class.schedule = [];
+        await _class.updateOne({schedule: []});
     });
-    afterAll(async () => Class.deleteMany({}).then(() => console.log("Class removed")));
+    afterAll(async () => {
+        await Class.deleteMany({})
+    });
 
     it("should return true if all is ok", async () => {
         const lessons = [
@@ -100,6 +97,7 @@ describe("setSchedule", () => {
     });
     it("should return false if className is not belongs to any class", async () => {
         const result = await DataBase.setSchedule("not real class name");
+
         return expect(result).toBe(false);
     });
 });

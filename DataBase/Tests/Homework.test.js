@@ -6,24 +6,23 @@ const
 describe("addHomework", () => {
     let MockClass;
     beforeAll(async () => {
-        await mongoose.connect("mongodb+srv://Damir:CLv4QEJJrfZp4BC0@botdata-sp9px.mongodb.net/test?retryWrites=true&w=majority", {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-            useCreateIndex: true
-        }, () => console.log("Mongoose successfully connected"));
         MockClass = await DataBase.createClass("1B");
-        await MockClass.updateOne({schedule: [
-            ["Математика","Русский","Английский"],
-            ["Английский","История","ОБЖ"],
-            ["Математика","История","Обществознание"],
-            ["Русский","Английский","Обществознание"]
-        ]})
+        await MockClass.updateOne({
+            schedule: [
+                ["Математика", "Русский", "Английский"],
+                ["Английский", "История", "ОБЖ"],
+                ["Математика", "История", "Обществознание"],
+                ["Русский", "Английский", "Обществознание"]
+            ]
+        })
     });
     afterEach(async () => {
         const _class = await DataBase.getClassBy_Id(MockClass._id);
-        _class.homework = [];
+        await _class.updateOne({homework: []});
     });
-    afterAll(async () => Class.deleteMany({}).then(() => console.log("Class removed")));
+    afterAll(async () => {
+        Class.deleteMany({}).then(() => console.log("Class removed"))
+    });
 
     it("should return true if all is ok", async () => {
         const task = "Сделай дз уже блять сука блять";
@@ -38,10 +37,11 @@ describe("addHomework", () => {
         await DataBase.addHomework(MockClass.name, "Обществознание", task);
         const updatedClass = await DataBase.getClassBy_Id(MockClass._id);
         const homework = updatedClass.homework.find(dz => dz.task === task);
+
         expect(updatedClass.homework.length - 1).toBe(initialLength);
         expect(homework).toBeTruthy();
         expect(homework.lesson).toBe("Обществознание");
-        expect(homework.to).toEqual(new Date(2020,2,18));
+        expect(homework.to).toEqual(new Date(2020, 2, 18));
     });
     it("should set homework's 'to' to given date if it passes", async () => {
         const task = "Сделай дз уже блять сука блять";
@@ -50,6 +50,32 @@ describe("addHomework", () => {
         const updatedClass = await DataBase.getClassBy_Id(MockClass._id);
         const homework = updatedClass.homework.find(dz => dz.task === task);
 
-        expect(homework.to).toEqual(new Date(2020,9,22));
+        expect(homework.to).toEqual(new Date(2020, 9, 22));
     })
+});
+
+describe("getHomework", () => {
+    let MockClass;
+    beforeAll(async () => {
+        MockClass = await DataBase.createClass("1B");
+        await MockClass.updateOne({
+            schedule: [
+                ["Математика", "Русский", "Английский"]
+            ]
+        });
+
+        await DataBase.addHomework(MockClass.name, "Русский", "Пошалить )");
+        await DataBase.addHomework(MockClass.name, "Математика", "Да");
+    });
+    afterAll(async () => {
+        await Class.deleteMany({})
+    });
+
+    it("should return list of homework", async () => {
+        const result = await DataBase.getHomework(MockClass.name);
+
+        expect(result.length).toBe(2);
+        expect(result[0].lesson).toBe("Русский");
+        expect(result[1].lesson).toBe("Математика");
+    });
 });
