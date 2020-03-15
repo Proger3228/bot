@@ -17,12 +17,15 @@ const findNextLessonDate = (nextLessonWeekDay, {currentDate = new Date(), monthW
         const maxDate = monthWith31.includes(currentDate.getMonth()) ? 31 :
             currentDate.getMonth() !== 1 ? 30 :
                 (currentDate.getFullYear() % 4 === 0 ? 29 : 28); //Возвращает количество дней в текущем месяце
+
         let date = currentDate.getDate() + addition - (weekDay - nextLessonWeekDay);
         let month = currentDate.getMonth();
+
         if (date > maxDate) {
             date -= maxDate;
             month++;
         }
+        
         return new Date(currentDate.getFullYear(), month, date);
     } else {
         throw new TypeError("Week day must be less or equal to 7")

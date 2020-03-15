@@ -1,7 +1,22 @@
 const mongoose = require("mongoose");
 const {Roles} = require("./utils");
 
-//TODO add validate to vk id (must be integer (not float))
+const settingsSchema = mongoose.Schema({
+    _id: false,
+    notificationsEnabled: {
+        type: Boolean,
+        default: true
+    },
+    notificationTime: {
+        type: String,
+        default: "17:00",
+        validate: {
+            validator: (str) => /[1-9][1-9]:[1-9][1-9]/.test(str),
+            message: "Notification time should match template like 00:00"
+        }
+    }
+});
+
 const studentSchema = mongoose.Schema({
     class: {
         type: mongoose.Schema.ObjectId,
@@ -25,10 +40,7 @@ const studentSchema = mongoose.Schema({
             message: "VkId must be integer"
         }
     },
-    isSubscribedToMailing: {
-        type: Boolean,
-        default: true
-    }
+    settings: settingsSchema
 });
 
 studentSchema.plugin(require("mongoose-autopopulate"));
