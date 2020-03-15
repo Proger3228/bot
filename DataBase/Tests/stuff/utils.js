@@ -1,47 +1,29 @@
 const {DataBase} = require("../../DataBase");
 
 const findNextDayWithLesson = (schedule, lesson, currentWeekDay) => {
-    let lastIndex = -2;
+    let lastIndex = -1;
     if (schedule.slice(currentWeekDay).find(e => e.includes(lesson))) {
-        lastIndex = schedule.slice(currentWeekDay).findIndex(e => e.includes(lesson)) + currentWeekDay;
-    } else if (schedule.find(e => e.includes(lesson))){
-        lastIndex = schedule.findIndex(e => e.includes(lesson));
+        lastIndex = schedule.slice(currentWeekDay).findIndex(e => e.includes(lesson)) + currentWeekDay + 1;
+    } else if (schedule.find(e => e.includes(lesson))) {
+        lastIndex = schedule.findIndex(e => e.includes(lesson)) + 1;
     }
-    return lastIndex + 1;
+    return lastIndex;
 };
 
 const findNextLessonDate = (nextLessonWeekDay, {currentDate = new Date(), monthWith31 = [0, 2, 4, 6, 7, 9, 11]} = {}) => {
     if (nextLessonWeekDay <= 7) {
-        const weekDay = currentDate.getDay() || 7;
-        const isThisWeek = nextLessonWeekDay > weekDay;
-        const addition = isThisWeek ? 0 : 7;
-        if (monthWith31.includes(currentDate.getMonth())) {
-            if (currentDate.getDate() + 7 - (weekDay - nextLessonWeekDay) <= 31) {
-                return new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + addition - (weekDay - nextLessonWeekDay))
-            } else {
-                return new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, (currentDate.getDate() + addition - (weekDay - nextLessonWeekDay)) - 31)
-            }
-        } else if (currentDate.getMonth() === 1) {
-            if (currentDate.getFullYear() % 4 === 0) {
-                if (currentDate.getDate() + 7 - (weekDay - nextLessonWeekDay) <= 29) {
-                    return new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + addition - (weekDay - nextLessonWeekDay))
-                } else {
-                    return new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, (currentDate.getDate() + addition - (weekDay - nextLessonWeekDay)) - 29)
-                }
-            } else {
-                if (currentDate.getDate() + 7 - (weekDay - nextLessonWeekDay) <= 28) {
-                    return new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + addition - (weekDay - nextLessonWeekDay))
-                } else {
-                    return new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, (currentDate.getDate() + addition - (weekDay - nextLessonWeekDay)) - 28)
-                }
-            }
-        } else {
-            if (currentDate.getDate() + 7 - (weekDay - nextLessonWeekDay) <= 30) {
-                return new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate() + addition - (weekDay - nextLessonWeekDay))
-            } else {
-                return new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, (currentDate.getDate() + addition - (weekDay - nextLessonWeekDay)) - 30)
-            }
+        const weekDay = currentDate.getDay() || 7; //Чтобы воскресенье было 7 днем недели
+        const addition = nextLessonWeekDay <= weekDay && 7; //Равно 7 если урок на следующей неделе
+        const maxDate = monthWith31.includes(currentDate.getMonth()) ? 31 :
+            currentDate.getMonth() !== 1 ? 30 :
+                (currentDate.getFullYear() % 4 === 0 ? 29 : 28); //Возвращает количество дней в текущем месяце
+        let date = currentDate.getDate() + addition - (weekDay - nextLessonWeekDay);
+        let month = currentDate.getMonth();
+        if (date > maxDate) {
+            date -= maxDate;
+            month++;
         }
+        return new Date(currentDate.getFullYear(), month, date);
     } else {
         throw new TypeError("Week day must be less or equal to 7")
     }
@@ -63,7 +45,6 @@ const createTestData = async () => {
         Class
     }
 };
-
 
 module.exports = {
     toObject,

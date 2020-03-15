@@ -12,14 +12,18 @@ const studentSchema = mongoose.Schema({
         type: String,
         default: Roles.student,
         validate: {
-            validator: (role) => Roles[role],
+            validator: (role) => Roles.includes(role),
             message: "Role must be one of defined"
         }
     },
     vkId: {
         type: Number,
         required: true,
-        unique: true
+        unique: true,
+        validate: {
+            validator: Number.isInteger,
+            message: "VkId must be integer"
+        }
     },
     isSubscribedToMailing: {
         type: Boolean,
