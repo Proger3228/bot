@@ -49,12 +49,22 @@ const createTestData = async () => {
     }
 };
 
+const findNotifiedStudents = (students, notificationDate,maxRemindFrequency) => {
+    return students
+        .filter(({settings: sets}) => sets.notificationsEnabled &&
+            notificationDate.getHours() === +sets.notificationTime.match(/^\d*/)[0] && //Проверяет что сейчас тот же час в который чел хочет что бы его оповещали
+            Math.abs(notificationDate.getMinutes() - +sets.notificationTime.match(/\d*$/)) <= 1 && //Проверяет что разница минуты которая сейчас и минуты в которую чел хочет что бы его оповещали меньше или = 1
+            (notificationDate - sets.lastHomeworkCheck) >= maxRemindFrequency //Проверяет что чел недавно (3 часа) сам не чекал дз
+        )
+};
+
 module.exports = {
     toObject,
     isObjectId,
     createTestData,
     findNextDayWithLesson,
-    findNextLessonDate
+    findNextLessonDate,
+    findNotifiedStudents
 };
 
 

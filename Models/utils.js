@@ -3,7 +3,6 @@ const Roles = {
     admin: "ADMIN",
     contributor: "CONTRIBUTOR"
 };
-
 const Lessons = [
     "Математика",
     "Английский",
@@ -21,7 +20,12 @@ const Lessons = [
     "Информатика",
 ];
 
+const checkValidTime = (str) => {
+    return typeof str === "string" && (!isNaN(+str[0]) && +str[0] >= 0) && (!isNaN(+str[1]) && +str[1] >= 0) && str[2] === ":" && (!isNaN(+str[3]) && +str[3] >= 0) && (!isNaN(+str[4]) && +str[4] >= 0);
+};
+
 module.exports = {
     Roles,
-    Lessons
+    Lessons,
+    checkValidTime
 };

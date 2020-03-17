@@ -41,7 +41,7 @@ module.exports.adminPanelScene = new Scene('adminPanel',
 
 module.exports.createClassScene = new Scene('createClass',
     (ctx) => {
-        ctx.reply("Введите имя класса, с английской , буквой (A - A, Б - B, В - V ...)");
+        ctx.reply("Введите имя класса, цифра буква");
         ctx.scene.next();
     },
     (ctx) => {

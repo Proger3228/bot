@@ -3,12 +3,18 @@ const {Roles, Lessons} = require("../Models/utils");
 const _Student = require("../Models/StudentModel");
 const _Class = require("../Models/ClassModel");
 const uuid4 = require("uuid4");
-const {isObjectId, findNextDayWithLesson, findNextLessonDate} = require("./Tests/stuff/utils");
+const {
+    isObjectId,
+    findNextDayWithLesson,
+    findNextLessonDate,
+    findNotifiedStudents
+} = require("./Tests/utils/functions");
 const mongoose = require("mongoose");
+const config = require("config");
 
 //TODO Replace returns of false and null to errors or error codes
 class DataBase {
-    //Roles stuff
+    //Roles utils
     static async generateNewRoleUpCode(className) {
         try {
             const newCode = uuid4();
@@ -114,10 +120,8 @@ class DataBase {
             const Class = await this.getClassByName(className);
             const Student = await this.getStudentByVkId(StudentVkId);
             if (Class && Student) {
-                Class.students.push(Student._id);
-                Student.class = Class._id;
-                await Class.save();
-                await Student.save();
+                await Class.updateOne({students: [...Class.students, Student._id]});
+                await Student.updateOne({class: Class._id});
                 return true;
             } else {
                 return false;
@@ -263,7 +267,14 @@ class DataBase {
         try {
             if (vkId) {
                 if (typeof vkId === "number") {
-                    const newStudent = class_id ? new _Student({vkId, class: class_id}) : new _Student({vkId});
+                    let newStudent;
+                    if (class_id) {
+                        newStudent = new _Student({vkId, class: class_id});
+                        const Class = await this.getClassBy_Id(class_id);
+                        await Class.updateOne({students: [...Class.students, newStudent._id]});
+                    } else {
+                        newStudent = new _Student({vkId});
+                    }
                     await newStudent.save();
                     return await DataBase.getStudentBy_Id(newStudent._id);
                 } else {
@@ -302,48 +313,54 @@ class DataBase {
     }; //Создает и возвращает класс
 
     //Homework
-    static async addHomework(className, lesson, task, expirationDate) {
+    static async addHomework(className, studentVkId, lesson, task, expirationDate) {
         try {
             if (className && typeof className === "string") {
-                if (lesson && Lessons.includes(lesson)) {
-                    if (task.trim() && typeof task === "string") {
-                        const Class = await this.getClassByName(className);
-                        if (Class) {
-                            if (Class.schedule.flat().includes(lesson)) {
-                                if (expirationDate) {
-                                    if (expirationDate instanceof Date && expirationDate - Date.now() > 0) {
+                if (studentVkId && typeof studentVkId === "number") {
+                    if (lesson && Lessons.includes(lesson)) {
+                        if (task.trim() && typeof task === "string") {
+                            const Class = await this.getClassByName(className);
+                            if (Class) {
+                                if (Class.schedule.flat().includes(lesson)) {
+                                    if (expirationDate) {
+                                        if (expirationDate instanceof Date && expirationDate - Date.now() > 0) {
+                                            const newHomework = {
+                                                lesson,
+                                                task,
+                                                to: expirationDate,
+                                                createdBy: studentVkId
+                                            };
+                                            await Class.updateOne({homework: [...Class.homework, newHomework]});
+                                            return true;
+                                        } else {
+                                            throw new TypeError("Expiration date must be Date in the future");
+                                        }
+                                    } else {
+                                        const nextLessonWeekDay = findNextDayWithLesson(Class.schedule, lesson, (new Date()).getDay() || 7); // 1 - 7
+                                        const nextLessonDate = findNextLessonDate(nextLessonWeekDay);
                                         const newHomework = {
                                             lesson,
                                             task,
-                                            to: expirationDate
+                                            to: nextLessonDate,
+                                            createdBy: studentVkId
                                         };
                                         await Class.updateOne({homework: [...Class.homework, newHomework]});
                                         return true;
-                                    } else {
-                                        throw new TypeError("Expiration date must be Date in the future");
                                     }
                                 } else {
-                                    const nextLessonWeekDay = findNextDayWithLesson(Class.schedule, lesson, (new Date()).getDay() || 7); // 1 - 7
-                                    const nextLessonDate = findNextLessonDate(nextLessonWeekDay);
-                                    const newHomework = {
-                                        lesson,
-                                        task,
-                                        to: nextLessonDate
-                                    };
-                                    await Class.updateOne({homework: [...Class.homework, newHomework]});
-                                    return true;
+                                    return false;
                                 }
                             } else {
                                 return false;
                             }
                         } else {
-                            return false;
+                            throw new TypeError("Task must be non empty string");
                         }
                     } else {
-                        throw new TypeError("Task must be non empty string");
+                        throw new TypeError("Lesson must be in lessons list");
                     }
                 } else {
-                    throw new TypeError("Lesson must be in lessons list");
+                    throw new TypeError("Student vkId must by number")
                 }
             } else {
                 throw new TypeError("ClassName must be string");
@@ -353,7 +370,7 @@ class DataBase {
             console.log(e);
             return false;
         }
-    } //Добавляет жомашнее задание в класс
+    }; //Добавляет жомашнее задание в класс
     static async getHomework(className) {
         try {
             if (className && typeof className === "string") {
@@ -371,7 +388,18 @@ class DataBase {
             console.log(e);
             return null
         }
-    }
+    };
+    static async parseHomeworkToNotifications(currentDateForTest) {
+        const classes = await _Class.find({});
+        const notificationArray = []; //Массив массивов типа [[Массив вк айди учеников], [Массив дз]]
+        for (const cl of classes) {
+            if (cl.homework.length && cl.students.length) {
+                const notifiedStudents = findNotifiedStudents(cl.students, currentDateForTest || new Date(), config.get("REMIND_AFTER"));
+                notificationArray.push([notifiedStudents.map(st => st.vkId), cl.homework]);
+            }
+        }
+        return notificationArray;
+    };
 
     //Schedule
     static lessonsIndexesToLessonsNames(lessonList, indexes) {
@@ -394,7 +422,7 @@ class DataBase {
         } else {
             throw new TypeError("LessonList must be array of strings");
         }
-    }
+    };
 
     static async setSchedule(className, lessonList, lessonsIndexesByDays) {
         try {
@@ -415,7 +443,38 @@ class DataBase {
             console.log(e);
             return false;
         }
-    } //Устонавливает расписание (1: список предметов, 2: имя класса, 3: массив массивов индексов уроков где индекс соответствует уроку в массиве(1) по дням недели)
+    }; //Устонавливает расписание (1: список предметов, 2: имя класса, 3: массив массивов индексов уроков где индекс соответствует уроку в массиве(1) по дням недели)
+
+    //Settings
+    static async changeSettings(vkId, diffObject) {
+        try {
+            if (vkId && typeof vkId === "number") {
+                if (typeof diffObject === "object" && diffObject !== null) {
+                    const Student = await this.getStudentByVkId(vkId);
+                    if (Student) {
+                        let settings = Student.settings;
+                        for (const key in diffObject) {
+                            if (key in settings) {
+                                settings[key] = diffObject[key];
+                            }
+                        }
+                        await Student.updateOne({settings});
+                        return true;
+                    } else {
+                        return false;
+                    }
+                } else {
+                    throw new TypeError("Second parameter must be an object of diffs in object")
+                }
+            } else {
+                throw new TypeError("VkId must be type of number")
+            }
+        } catch (e) {
+            if (e instanceof TypeError) throw e;
+            console.log(e);
+            return false;
+        }
+    };
 }
 
 module.exports.DataBase = DataBase;

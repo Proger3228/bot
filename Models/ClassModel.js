@@ -1,26 +1,7 @@
 const mongoose = require("mongoose");
 const uuid4 = require("uuid4");
-const Lessons = require("./utils");
+const {Lessons} = require("./utils");
 
-const homeWorkSchema = mongoose.Schema({
-    lesson: {
-        required: true,
-        type: String,
-        validate: {
-            validator: (lessonName) => Lessons.includes(lessonName),
-            message: "Lesson must have one of defined names"
-        }
-    },
-    task: {
-        required: true,
-        type: String
-    },
-    to: {
-        type: Date,
-        default: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7)
-    },
-    _id: false
-});
 const classSchema = mongoose.Schema({
     students: {
         type: [{
@@ -47,7 +28,31 @@ const classSchema = mongoose.Schema({
         unique: true
     },
     homework: {
-        type: [homeWorkSchema],
+        type: [
+            {
+                lesson: {
+                    required: true,
+                    type: String,
+                    enum: Lessons
+                },
+                task: {
+                    required: true,
+                    type: String
+                },
+                to: {
+                    type: Date,
+                    default: new Date(Date.now() + 1000 * 60 * 60 * 24 * 7)
+                },
+                createdBy: {
+                    required: true,
+                    type: Number,
+                    validate: {
+                        validator: Number.isInteger,
+                        message: "Created by must be integer means vk id of user created it"
+                    }
+                }
+            }
+        ],
         default: []
     },
     schedule: {
@@ -56,10 +61,7 @@ const classSchema = mongoose.Schema({
                 [
                     {
                         type: String,
-                        validate: {
-                            validator: (lessonName) => Lessons.includes(lessonName),
-                            message: "Lesson must have one of defined names"
-                        }
+                        enum: Lessons
                     }
                 ]
             ],

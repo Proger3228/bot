@@ -3,7 +3,7 @@ const
     Student = require("../../Models/StudentModel"),
     Class = require("../../Models/ClassModel"),
     {DataBase} = require("../DataBase");
-const {toObject} = require("./stuff/utils");
+const {toObject} = require("./utils/functions");
 
 describe("createStudent", () => {
     afterAll(async () => {
