@@ -14,8 +14,9 @@ const createTestData = async (studentVkIds, className, isAddHomework = true) => 
     });
 
     if (isAddHomework) {
-        await DataBase.addHomework(MockClass.name, 1488, "Русский", "1");
-        await DataBase.addHomework(MockClass.name, 1488, "Математика", "2");
+        await DataBase.addHomework(MockClass.name, 1488, "Русский", "1", new Date(2020,0,2));
+        await DataBase.addHomework(MockClass.name, 1488, "Математика", "2", new Date(2020,0,2));
+        await DataBase.addHomework(MockClass.name, 1488, "Математика", "2", new Date(2019,0,2)); //Не должен добавляться
     }
 
     for (let id of studentVkIds) {
@@ -95,6 +96,7 @@ describe("getHomework", () => {
 
         await DataBase.addHomework(MockClass.name, 1488, "Русский", "Пошалить )");
         await DataBase.addHomework(MockClass.name, 1488, "Математика", "Да");
+        await DataBase.addHomework(MockClass.name, 1488, "Английский", "Нет", new Date(2020,0,1));
     });
     afterAll(async () => {
         await Class.deleteMany({})
@@ -107,6 +109,12 @@ describe("getHomework", () => {
         expect(result[0].lesson).toBe("Русский");
         expect(result[1].lesson).toBe("Математика");
     });
+    it("if date is passed should return homework only for this date", async () => {
+        const result = await DataBase.getHomework(MockClass.name, new Date(2020,0,1));
+
+        expect(result.length).toBe(1);
+        expect(result[0].lesson).toBe("Английский");
+    })
 });
 
 describe("parseHomeworkToNotifications", () => {
