@@ -106,9 +106,11 @@ class DataBase {
                 if (typeof vkId === "number") {
                     let newStudent;
                     if (class_id) {
-                        newStudent = new _Student({vkId, class: class_id});
                         const Class = await this.getClassBy_Id(class_id);
-                        await Class.updateOne({students: [...Class.students, newStudent._id]});
+                        newStudent = new _Student({vkId, class: Class ? class_id : undefined});
+                        if (Class) {
+                            await Class.updateOne({students: [...Class.students, newStudent._id]});
+                        }
                     } else {
                         newStudent = new _Student({vkId});
                     }

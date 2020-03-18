@@ -61,7 +61,7 @@ describe("addHomework", () => {
         const studentVkId = 1488;
         const initialLength = MockClass.homework.length;
 
-        await DataBase.addHomework(MockClass.name, studentVkId, lesson, task);
+        await DataBase.addHomework(MockClass.name, studentVkId, lesson, task, new Date(2020, 2, 18));
         const updatedClass = await DataBase.getClassBy_Id(MockClass._id);
         const homework = updatedClass.homework.find(dz => dz.task === task);
 
@@ -76,11 +76,11 @@ describe("addHomework", () => {
         const lesson = "Обществознание";
         const studentVkId = 1488;
 
-        await DataBase.addHomework(MockClass.name, studentVkId, lesson, task, new Date(2020, 9, 22));
+        await DataBase.addHomework(MockClass.name, studentVkId, lesson, task, new Date(2019, 9, 22));
         const updatedClass = await DataBase.getClassBy_Id(MockClass._id);
         const homework = updatedClass.homework.find(dz => dz.task === task);
 
-        expect(homework.to).toEqual(new Date(2020, 9, 22));
+        expect(homework.to).toEqual(new Date(2019, 9, 22));
     })
 });
 
@@ -105,7 +105,7 @@ describe("getHomework", () => {
     it("should return list of homework", async () => {
         const result = await DataBase.getHomework(MockClass.name);
 
-        expect(result.length).toBe(2);
+        expect(result.length).toBe(3);
         expect(result[0].lesson).toBe("Русский");
         expect(result[1].lesson).toBe("Математика");
     });

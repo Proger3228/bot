@@ -6,12 +6,8 @@ const
 
 const createTestData = async () => {
     const Class = await DataBase.createClass(Math.ceil(Math.random() * 100) + "A");
-    await Class.save();
     const Student = await DataBase.createStudent(Math.ceil(Math.random() * 100), Class._id);
-    await Student.save();
-    Class.students.push(Student._id);
-    await Class.save();
-    await Student.save();
+    await Class.updateOne({students: [...Class.students, Student]});
     return {
         Student: await DataBase.getStudentBy_Id(Student._id),
         Class: await DataBase.getClassBy_Id(Class._id)
