@@ -1,13 +1,13 @@
-const {findNextDayWithLesson,findNextLessonDate, findNotifiedStudents} = require("./utils/functions");
+const {findNextDayWithLesson,findNextLessonDate, findNotifiedStudents, lessonsIndexesToLessonsNames} = require("../utils/functions");
 const config = require("config");
 
 const createMockStudent = ({ne: notificationsEnabled = true, nt: notificationTime = "00:00", lhc: lastHomeworkCheck = new Date(0)} = {}) => {
     return {
         settings: {
             notificationsEnabled,
-            notificationTime,
-            lastHomeworkCheck
-        }
+            notificationTime
+        },
+        lastHomeworkCheck
     }
 };
 
@@ -55,8 +55,54 @@ describe("findNotifiedStudents", () => {
         const notificationsArray = findNotifiedStudents([studentP,studentP1,studentP2,studentNP,studentNP1,studentNP2], notificationDate, maxRemindFreq);
 
         expect(notificationsArray).toBeInstanceOf(Array);
-        console.log(notificationsArray);
         expect(notificationsArray.length).toBe(3);
         expect(notificationsArray.includes(studentP) && notificationsArray.includes(studentP1) && notificationsArray.includes(studentP2)).toBe(true);
+    })
+});
+
+describe("lessonsIndexesToLessonsNames", () => {
+    it("should convert indexes to names", () => {
+        const lessons = [
+            "1", "2", "3"
+        ];
+        const indexes = [
+            [0, 1, 2],
+            [2, 1, 0]
+        ];
+        const result = lessonsIndexesToLessonsNames(lessons, indexes);
+        const expected = [
+            ["1", "2", "3"],
+            ["3", "2", "1"]
+        ];
+
+        expect(result).toEqual(expected);
+    });
+    it("should throw error if some of indexes is bigger than lessons length", () => {
+        const lessons = [
+            "1",
+            "2",
+            "3"
+        ];
+        const indexes = [
+            [0, 1, 2],
+            [3, 1, 0]
+        ];
+
+        expect(() => lessonsIndexesToLessonsNames(lessons, indexes)).toThrowError(ReferenceError);
+    })
+    it("should throw error if some of lessons is not type of string / it's length is 0 / it's not an array ", () => {
+        expect(() => lessonsIndexesToLessonsNames(["1", 2], [])).toThrowError(new TypeError("LessonList must be array of strings")); //not type of string
+        expect(() => lessonsIndexesToLessonsNames([], [])).toThrowError(new TypeError("LessonList must be array of strings")); //length is 0
+        expect(() => lessonsIndexesToLessonsNames("not an array", [])).toThrowError(new TypeError("LessonList must be array of strings")); //not an array
+    })
+    it("should throw error if indexes is not array / indexes length is 0  / some of array elements isn't array of integers", () => {
+        expect(() =>
+            lessonsIndexesToLessonsNames(["1", "2"], "not an array")).toThrowError(new TypeError("lessonsIndexesByDays must be array of arrays of integers")); //not an array
+        expect(() =>
+            lessonsIndexesToLessonsNames(["1", "2"], [])).toThrowError(new TypeError("lessonsIndexesByDays must be array of arrays of integers")); //length is 0
+        expect(() =>
+            lessonsIndexesToLessonsNames(["1", "2"], [["1", 2]])).toThrowError(new TypeError("lessonsIndexesByDays must be array of arrays of integers")); //some of elements isn't numbers
+        expect(() =>
+            lessonsIndexesToLessonsNames(["1", "2"], [[1.4, 2]])).toThrowError(new TypeError("lessonsIndexesByDays must be array of arrays of integers")); //some of elements isn't integers
     })
 });

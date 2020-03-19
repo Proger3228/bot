@@ -33,14 +33,14 @@ const studentSchema = mongoose.Schema({
                 validator: checkValidTime,
                 message: "Notification time should match template like 00:00"
             }
-        },
-        lastHomeworkCheck: {
-            type: Date,
-            default: new Date(0),
-            validate: {
-                validator: date => Date.now() - date >= 0,
-                message: "Last check of homework time can`t be in the future"
-            }
+        }
+    },
+    lastHomeworkCheck: {
+        type: Date,
+        default: new Date(0),
+        validate: {
+            validator: date => Date.now() - date >= 0,
+            message: "Last check of homework time can`t be in the future"
         }
     },
     banned: {

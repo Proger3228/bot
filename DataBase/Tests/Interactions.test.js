@@ -90,7 +90,6 @@ describe("removeStudentFromClass", () => {
 
         const updatedClass = await DataBase.getClassBy_Id(MockClass._id);
         const updatedStudent = await DataBase.getStudentBy_Id(MockStudent._id);
-
         expect(updatedClass.students.every(student => student._id.toString() !== updatedStudent._id.toString())).toBeTruthy();
         expect(updatedStudent.class).toBeNull();
     });

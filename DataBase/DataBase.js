@@ -7,8 +7,9 @@ const {
     isObjectId,
     findNextDayWithLesson,
     findNextLessonDate,
-    findNotifiedStudents
-} = require("./Tests/utils/functions");
+    findNotifiedStudents,
+    lessonsIndexesToLessonsNames
+} = require("./utils/functions");
 const mongoose = require("mongoose");
 const config = require("config");
 
@@ -88,14 +89,13 @@ class DataBase {
     static async getAllContributors() {
         try {
             const contributors = await _Student.find({role: Roles.contributor});
-
             if (contributors) {
                 return contributors;
             } else {
-                return null;
+                return [];
             }
         } catch (e) {
-            return null;
+            return [];
         }
     }; //Возвращает список всех редакторов
 
@@ -251,34 +251,12 @@ class DataBase {
     };
 
     //Schedule
-    static lessonsIndexesToLessonsNames(lessonList, indexes) {
-        if (Array.isArray(lessonList) && lessonList.length && lessonList.every(el => typeof el === "string")) {
-            if (
-                Array.isArray(indexes) &&
-                indexes.length > 0 &&
-                indexes.every(lesson =>
-                    Array.isArray(lesson) &&
-                    lesson.every(Number.isInteger)
-                ) //lessonList должен быть массивом массивов целых чисел
-            ) {
-                if (lessonList.length - 1 < Math.max(...indexes.flat())) {
-                    throw new ReferenceError("Index in indexes array can`t be bigger than lesson list length")
-                }
-                return indexes.map(dayIdxs => dayIdxs.map(idx => lessonList[idx])) //превращает массив индексов в массив предметов
-            } else {
-                throw new TypeError("lessonsIndexesByDays must be array of arrays of integers");
-            }
-        } else {
-            throw new TypeError("LessonList must be array of strings");
-        }
-    };
-
-    static async setSchedule(className, lessonList, lessonsIndexesByDays) {
+    static async setSchedule(className, lessonsIndexesByDays, lessonList = Lessons) {
         try {
             if (className && typeof className === "string") {
                 const Class = await this.getClassByName(className);
                 if (Class) {
-                    const newSchedule = this.lessonsIndexesToLessonsNames(lessonList, lessonsIndexesByDays);
+                    const newSchedule = lessonsIndexesToLessonsNames(lessonList, lessonsIndexesByDays);
                     await Class.updateOne({schedule: newSchedule});
                     return true;
                 } else {
@@ -330,26 +308,31 @@ class DataBase {
     //Roles utils
     static async generateNewRoleUpCode(className) {
         try {
-            const newCode = uuid4();
-            const Class = await DataBase.getClassByName(className);
-            if (Class) {
-                Class.roleUpCodes.push(newCode);
-                await Class.save();
-                return newCode;
+            if (className && typeof className === "string") {
+                const newCode = uuid4();
+                const Class = await DataBase.getClassByName(className);
+                if (Class) {
+                    Class.roleUpCodes.push(newCode);
+                    await Class.save();
+                    return newCode;
+                } else {
+                    return null;
+                }
             } else {
-                return null;
+                throw new TypeError("className must be string")
             }
         } catch (e) {
+            if (e instanceof TypeError) throw e;
             console.error(e);
             return null
         }
     }; //Генерирует и возвращает код для того что бы стать радактором, если не получилось возвращает null
-    static async removeRoleUpCode(className, codeToBeRemoved) {
+    static async removeRoleUpCode(className, code) {
         try {
-            if (uuid4.valid(codeToBeRemoved)) {
+            if (uuid4.valid(code)) {
                 const Class = await DataBase.getClassByName(className);
                 if (Class && Class.roleUpCodes) {
-                    Class.roleUpCodes = Class.roleUpCodes.filter(code => code !== codeToBeRemoved);
+                    Class.roleUpCodes = Class.roleUpCodes.filter(code => code !== code);
                     await Class.save();
                     return true;
                 } else {
@@ -395,11 +378,11 @@ class DataBase {
             return false;
         }
     }; //Активирует код - делает ученика редактором и убирает код и списка кодов класса
-    static async checkCodeValidity(className, codeToBeChecked) {
-        if (uuid4.valid(codeToBeChecked)) {
+    static async checkCodeValidity(className, code) {
+        if (uuid4.valid(code)) {
             const Class = await this.getClassByName(className);
             if (Class && Class.roleUpCodes) {
-                return Class.roleUpCodes.includes(codeToBeChecked);
+                return Class.roleUpCodes.includes(code);
             } else {
                 return false;
             }
@@ -473,10 +456,8 @@ class DataBase {
             if (Student) {
                 const Class = Student.class;
                 if (!Class) return true;
-                Class.students = Class.students.filter(({_id}) => _id.toString() !== Student._id.toString());
-                Student.class = null;
-                await Class.save();
-                await Student.save();
+                await Class.updateOne({students: Class.students.filter(({_id}) => _id.toString() !== Student._id.toString())});
+                await Student.updateOne({class: null});
                 return true;
             } else {
                 return false;
@@ -512,7 +493,6 @@ class DataBase {
             return false;
         }
     }; //Меняет класс ученика
-
 }
 
 module.exports.DataBase = DataBase;

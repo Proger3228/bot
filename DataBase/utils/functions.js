@@ -1,4 +1,4 @@
-const {DataBase} = require("../../DataBase");
+const {DataBase} = require("../DataBase");
 
 const findNextDayWithLesson = (schedule, lesson, currentWeekDay) => {
     let lastIndex = -1;
@@ -50,12 +50,44 @@ const createTestData = async () => {
 };
 
 const findNotifiedStudents = (students, notificationDate,maxRemindFrequency) => {
+    console.log(students);
     return students
-        .filter(({settings: sets}) => sets.notificationsEnabled &&
-            notificationDate.getHours() === +sets.notificationTime.match(/^\d*/)[0] && //Проверяет что сейчас тот же час в который чел хочет что бы его оповещали
-            Math.abs(notificationDate.getMinutes() - +sets.notificationTime.match(/\d*$/)) <= 1 && //Проверяет что разница минуты которая сейчас и минуты в которую чел хочет что бы его оповещали меньше или = 1
-            (notificationDate - sets.lastHomeworkCheck) >= maxRemindFrequency //Проверяет что чел недавно (3 часа) сам не чекал дз
+        .filter(({settings: sets, lastHomeworkCheck}) => {
+                if (sets.notificationsEnabled) { //Проверяет что уведомления включены
+                    if (notificationDate.getHours() === +sets.notificationTime.match(/^\d*/)[0] && Math.abs(notificationDate.getMinutes() - +sets.notificationTime.match(/\d*$/)) <= 1) { //Проверяет что время совпадает или почти
+                        if ((notificationDate - lastHomeworkCheck) >= maxRemindFrequency) { //Проверяет что чел недавно (3 часа) сам не чекал дз}
+                            return true;
+                        }
+                    } else {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+            }
         )
+};
+
+const lessonsIndexesToLessonsNames = (lessonList, indexes) => {
+    if (Array.isArray(lessonList) && lessonList.length && lessonList.every(el => typeof el === "string")) {
+        if (
+            Array.isArray(indexes) &&
+            indexes.length > 0 &&
+            indexes.every(lesson =>
+                Array.isArray(lesson) &&
+                lesson.every(Number.isInteger)
+            ) //lessonList должен быть массивом массивов целых чисел
+        ) {
+            if (lessonList.length - 1 < Math.max(...indexes.flat())) {
+                throw new ReferenceError("Index in indexes array can`t be bigger than lesson list length")
+            }
+            return indexes.map(dayIdxs => dayIdxs.map(idx => lessonList[idx])) //превращает массив индексов в массив предметов
+        } else {
+            throw new TypeError("lessonsIndexesByDays must be array of arrays of integers");
+        }
+    } else {
+        throw new TypeError("LessonList must be array of strings");
+    }
 };
 
 module.exports = {
@@ -64,7 +96,8 @@ module.exports = {
     createTestData,
     findNextDayWithLesson,
     findNextLessonDate,
-    findNotifiedStudents
+    findNotifiedStudents,
+    lessonsIndexesToLessonsNames
 };
 
 
