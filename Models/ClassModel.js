@@ -72,16 +72,17 @@ const classSchema = mongoose.Schema({
         default: [
             [], [], [],
             [], [], []
-        ],
-        validate: {
-            validator: (arr) => arr.length <= 7,
-            message: "Schedule must contain only one item per day of a week"
-        },
+        ]
     },
-    changes: [{
-        value: String,
-        to: Date
-    }],
+    changes: {
+        type: [{
+            value: String,
+            to: Date,
+            createdBy: Number,
+            _id: false
+        }],
+        default: []
+    },
     roleUpCodes: {
         type: [String],
         default: [],

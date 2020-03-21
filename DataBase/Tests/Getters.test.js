@@ -10,7 +10,7 @@ const
 describe("getStudentBy_Id", () => {
     let MockStudent;
     beforeAll(async () => {
-        MockStudent = await DataBase.createStudent(Math.ceil(Math.random() * 100));
+        MockStudent = await DataBase.createStudent(Math.ceil(Math.random() * 100 + 1));
     });
     afterAll(async () => {
         await Student.deleteMany({});
@@ -68,7 +68,7 @@ describe("getClassBy_Id", () => {
 describe("getStudentByVkId", () => {
     let MockStudent;
     beforeAll(async () => {
-        MockStudent = await DataBase.createStudent(Math.ceil(Math.random() * 100));
+        MockStudent = await DataBase.createStudent(Math.ceil(Math.random() * 100 + 1));
     });
     afterAll(async () => {
         await Student.deleteMany({});

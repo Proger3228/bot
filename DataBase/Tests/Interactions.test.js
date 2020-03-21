@@ -5,8 +5,8 @@ const
     {DataBase} = require("../DataBase");
 
 const createTestData = async () => {
-    const Class = await DataBase.createClass(Math.ceil(Math.random() * 100) + "A");
-    const Student = await DataBase.createStudent(Math.ceil(Math.random() * 100), Class._id);
+    const Class = await DataBase.createClass(Math.ceil(Math.random() * 100 + 1) + "A");
+    const Student = await DataBase.createStudent(Math.ceil(Math.random() * 100 + 1), Class._id);
     await Class.updateOne({students: [...Class.students, Student]});
     return {
         Student: await DataBase.getStudentBy_Id(Student._id),
@@ -39,7 +39,7 @@ describe("addStudentToClass", () => {
         return expect(result).toBe(true);
     });
     it("should add student to class and class to student", async () => {
-        const newStudent = await DataBase.createStudent(Math.ceil(Math.random() * 100));
+        const newStudent = await DataBase.createStudent(Math.ceil(Math.random() * 100 + 1));
 
         await DataBase.addStudentToClass(newStudent.vkId, MockClass.name);
 
@@ -127,7 +127,7 @@ describe("changeClass", () => {
     });
 
     it("should return true if all is ok", async () => {
-        const newClass = await DataBase.createClass(Math.ceil(Math.random() * 100) + "A");
+        const newClass = await DataBase.createClass(Math.ceil(Math.random() * 100 + 1) + "A");
 
         const result = await DataBase.changeClass(MockStudent.vkId, newClass.name);
 
@@ -143,7 +143,7 @@ describe("changeClass", () => {
         expect(updatedStudent.class.toString()).toBe(updatedClass.toString());
     });
     it("should return false if newClass/student are undefined", async () => {
-        const newClass = await DataBase.createClass(Math.ceil(Math.random() * 100) + "A");
+        const newClass = await DataBase.createClass(Math.ceil(Math.random() * 100 + 1) + "A");
 
         const resultWithWrongVkId = await DataBase.changeClass(0, newClass.name);
         const resultWithWrongClassName= await DataBase.changeClass(MockStudent.vkId, "not a name");

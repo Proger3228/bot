@@ -1,4 +1,4 @@
-const {DataBase} = require("../DataBase");
+const {DataBase} = require("../DataBase.js");
 
 const findNextDayWithLesson = (schedule, lesson, currentWeekDay) => {
     let lastIndex = -1;
@@ -40,17 +40,23 @@ const isObjectId = id => {
         return false
     }
 };
-const createTestData = async () => {
-    const Student = await DataBase.createStudent(Math.ceil(Math.random() * 100));
-    const Class = await DataBase.createClass(Math.ceil(Math.random() * 10) + "A");
+
+const createTestData = async ({clAmt = 1, stAmt = 1} = {}) => {
+    const students = [];
+    const classes = [];
+    for (let i = 0; i < stAmt; i++) {
+        students.push(await DataBase.createStudent(Math.ceil(Math.random() * 100 + 1)));
+    }
+    for (let i = 0; i < clAmt; i++) {
+        classes.push(await DataBase.createClass(Math.ceil(Math.random() * 10) + "A"));
+    }
     return {
-        Student,
-        Class
+        Student: students.length > 1 ? students : students[0],
+        Class: classes.length > 1 ? classes : classes[0]
     }
 };
 
 const findNotifiedStudents = (students, notificationDate,maxRemindFrequency) => {
-    console.log(students);
     return students
         .filter(({settings: sets, lastHomeworkCheck}) => {
                 if (sets.notificationsEnabled) { //Проверяет что уведомления включены
@@ -90,6 +96,10 @@ const lessonsIndexesToLessonsNames = (lessonList, indexes) => {
     }
 };
 
+const checkIsToday = (date, to = new Date()) => {
+    return to.getDate() === date.getDate() && date.getMonth() === to.getMonth() && date.getFullYear() === to.getFullYear();
+};
+
 module.exports = {
     toObject,
     isObjectId,
@@ -97,7 +107,8 @@ module.exports = {
     findNextDayWithLesson,
     findNextLessonDate,
     findNotifiedStudents,
-    lessonsIndexesToLessonsNames
+    lessonsIndexesToLessonsNames,
+    checkIsToday
 };
 
 

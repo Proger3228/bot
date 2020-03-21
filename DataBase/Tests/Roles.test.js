@@ -8,7 +8,7 @@ const
 
 const createTestData = async () => {
     const Class = await DataBase.createClass(Math.ceil(Math.random() * 10) + "A");
-    const Student = await DataBase.createStudent(Math.ceil(Math.random() * 100), Class._id);
+    const Student = await DataBase.createStudent(Math.ceil(Math.random() * 100 + 1), Class._id);
 
     await Class.students.push(Student._id);
 
@@ -284,7 +284,7 @@ describe("backStudentToInitialRole", () => {
 describe("banUser", () => {
     let MockStudent;
     beforeAll(async () => {
-        MockStudent = await DataBase.createStudent(Math.ceil(Math.random() * 100));
+        MockStudent = await DataBase.createStudent(Math.ceil(Math.random() * 100 + 1));
     });
     afterAll(async () => {
         await Student.deleteMany({});

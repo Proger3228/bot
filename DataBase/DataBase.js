@@ -8,7 +8,8 @@ const {
     findNextDayWithLesson,
     findNextLessonDate,
     findNotifiedStudents,
-    lessonsIndexesToLessonsNames
+    lessonsIndexesToLessonsNames,
+    checkIsToday
 } = require("./utils/functions");
 const mongoose = require("mongoose");
 const config = require("config");
@@ -218,7 +219,7 @@ class DataBase {
                 const Class = await this.getClassByName(className);
                 if (Class) {
                     if (date) {
-                        return Class.homework.filter(({to}) => to.getDate() === date.getDate() && date.getMonth() === to.getMonth() && date.getFullYear() === to.getFullYear());
+                        return Class.homework.filter(({to}) => checkIsToday(date, to));
                     } else {
                         return Class.homework;
                     }
@@ -233,8 +234,7 @@ class DataBase {
             console.log(e);
             return null
         }
-    };
-
+    }; //
     static async parseHomeworkToNotifications(currentDateForTest) {
         const classes = await _Class.find({});
         const notificationArray = []; //Массив массивов типа [[Массив вк айди учеников], [Массив дз]]
@@ -243,12 +243,12 @@ class DataBase {
                 const date = currentDateForTest || Date();
                 date.setDate(date.getDate() + 1); // Берем дз на некст день
                 const notifiedStudentIds = findNotifiedStudents(cl.students, currentDateForTest || new Date(), config.get("REMIND_AFTER")).map(({vkId}) => vkId);
-                const homework = cl.homework.filter(({to}) => to.getDate() === date.getDate() && date.getMonth() === to.getMonth() && date.getFullYear() === to.getFullYear());
+                const homework = cl.homework.filter(({to}) => checkIsToday(to, date));
                 notificationArray.push([notifiedStudentIds, homework]);
             }
         }
         return notificationArray;
-    };
+    }; //
 
     //Schedule
     static async setSchedule(className, lessonsIndexesByDays, lessonList = Lessons) {
@@ -271,6 +271,68 @@ class DataBase {
             return false;
         }
     }; //Устонавливает расписание (1: список предметов, 2: имя класса, 3: массив массивов индексов уроков где индекс соответствует уроку в массиве(1) по дням недели)
+
+    //Changes
+    static async addChanges(vkId, parsedAttachments, toDate = new Date(), toAll = false) {
+        try {
+            if (vkId && typeof vkId === 'number') {
+                if (parsedAttachments && Array.isArray(parsedAttachments) && parsedAttachments.every(at => typeof at === "string" && /[a-z]+\d+_\d+_.+/.test(at))) {
+                    if (toDate && toDate instanceof Date) {
+                        const Student = await this.getStudentByVkId(vkId);
+                        const newChanges = parsedAttachments.map(value => ({
+                            to: toDate,
+                            value,
+                            createdBy: vkId
+                        }));
+                        if (toAll) {
+                            const classes = await _Class.find({});
+                            for (const _class of classes) {
+                                await _class.updateOne({changes: [..._class.changes, ...newChanges]})
+                            }
+                            return true;
+                        } else {
+                            if (Student.class) {
+                                await Student.class.updateOne({changes: [...Student.class.changes, ...newChanges]});
+                                return true;
+                            } else {
+                                return false; //Не состоя в классе вы можете добавлять изменения только всем классам
+                            }
+                        }
+                    } else {
+                        throw new TypeError("toDate must be date");
+                    }
+                } else {
+                    throw new TypeError("Attachments must be array of attachments")
+                }
+            } else {
+                throw new TypeError("VkId must be number");
+            }
+        } catch (e) {
+            if (e instanceof TypeError) throw e;
+            return false;
+        }
+    }; //
+    static async getChanges(className, date) {
+        try {
+            if (className && typeof className === "string") {
+                const Class = await this.getClassByName(className);
+                if (Class) {
+                    if (date) {
+                        return Class.changes.filter(ch => checkIsToday(ch.to, date))
+                    } else {
+                        return Class.changes;
+                    }
+                } else {
+                    return null;
+                }
+            } else {
+                throw new TypeError("ClassName must be string")
+            }
+        } catch (e) {
+            if (e instanceof TypeError) throw e;
+            return null;
+        }
+    }; //
 
     //// Students
 
@@ -431,7 +493,7 @@ class DataBase {
             if (e instanceof TypeError) throw e;
             return false;
         }
-    }
+    }; //
 
     //// Interactions
     static async addStudentToClass(StudentVkId, className) {

@@ -7,7 +7,7 @@ describe("changeSettings", () => {
     let MockStudent;
     let defaultSettings;
     beforeAll(async () => {
-        MockStudent = await DataBase.createStudent(Math.ceil(Math.random() * 100));
+        MockStudent = await DataBase.createStudent(Math.ceil(Math.random() * 100 + 1));
         defaultSettings = MockStudent.settings;
     });
     afterEach(async () => {

@@ -11,7 +11,7 @@ describe("createStudent", () => {
     });
 
     it("should create new student", async () => {
-        const vkId = Math.ceil(Math.random() * 100);
+        const vkId = Math.ceil(Math.random() * 100 + 1);
         const student = await DataBase.createStudent(vkId);
         return expect(student).toBeTruthy();
     });
@@ -25,12 +25,12 @@ describe("createStudent", () => {
     });
     it("should add class property if class_id is passed", async () => {
         const _class = await DataBase.createClass(Math.ceil(Math.random() * 10) + "A");
-        const vkId = Math.ceil(Math.random() * 100);
+        const vkId = Math.ceil(Math.random() * 100 + 1);
         const student = await DataBase.createStudent(vkId, _class._id);
         return expect(student.class).toBeTruthy();
     });
     it("should not add class property if class with class_id is not exists", async () => {
-        const vkId = Math.ceil(Math.random() * 100);
+        const vkId = Math.ceil(Math.random() * 100 + 1);
         const student = await DataBase.createStudent(vkId, "5e666472b5e95352409392ec");//not real class_id
         return expect(student.class).toBeFalsy();
     })

@@ -34,10 +34,19 @@ const isAdmin = (userId) => {
     return config.get("admins").includes(userId);
 };
 
+const parseAttachments = (attachments) => {
+    if (Array.isArray(attachments) && attachments.every(att => att.type && att[att.type])) {
+        return attachments.map(att => `${att.type}${att[att.type].owner_id}_${att[att.type].id}_${att[att.type].access_key}`)
+    } else {
+        throw new TypeError("Wrong attachments type");
+    }
+};
+
 module.exports = {
     renderLessons,
     formMessage,
     isAdmin,
     renderAdminKeyBoard,
-    renderAdminMenu
+    renderAdminMenu,
+    parseAttachments
 };
