@@ -61,11 +61,11 @@ bot.command(/дз/i, (ctx) => {
 
 bot.command(/helo/, (ctx) => console.log(ctx));
 
-<<<<<<< HEAD
+
 bot.command(/hyd/, (ctx) => ctx.reply("ALL GOOD"));
-=======
+
 bot.command(/bye/, ctx => ctx.reply("bye bye"));
->>>>>>> awda
+
 
 bot.startPolling();
 
