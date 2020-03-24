@@ -63,5 +63,7 @@ bot.command(/helo/, (ctx) => console.log(ctx));
 
 bot.command(/bye/, ctx => ctx.reply("bye bye"));
 
+bot.command(/hyd/, ctx => ctx.reply("ALL GOOD"));
+
 bot.startPolling();
 
