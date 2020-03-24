@@ -61,6 +61,7 @@ bot.command(/дз/i, (ctx) => {
 
 bot.command(/helo/, (ctx) => console.log(ctx));
 
+bot.command(/bye/, ctx => ctx.reply("bye bye"));
 
 bot.startPolling();
 
