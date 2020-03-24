@@ -55,7 +55,7 @@ bot.command(/расписание/i, (ctx) => {
     }
 });
 bot.command(/дз/i, (ctx) => {
-    ctx.reply("Дз будет но позже")
+    ctx.reply("Дз не будет (бот принял ислам)")
 });
 
 bot.startPolling();
