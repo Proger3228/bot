@@ -58,7 +58,5 @@ bot.command(/дз/i, (ctx) => {
     ctx.reply("Дз не будет (бот принял ислам)")
 });
 
-//some stuff
-
 bot.startPolling();
 
