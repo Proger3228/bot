@@ -47,6 +47,7 @@ const classSchema = mongoose.Schema({
                         message: "Homework 'to' can`t be in future"
                     }
                 },
+                attachments: String,
                 createdBy: {
                     required: true,
                     type: Number,
@@ -76,7 +77,8 @@ const classSchema = mongoose.Schema({
     },
     changes: {
         type: [{
-            value: String,
+            text: String,
+            attachments: String,
             to: Date,
             createdBy: Number,
             _id: false
@@ -92,6 +94,7 @@ const classSchema = mongoose.Schema({
         }
     }
 });
+
 classSchema.plugin(require("mongoose-autopopulate"));
 
 module.exports = mongoose.model("Class", classSchema);

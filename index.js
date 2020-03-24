@@ -26,9 +26,13 @@ mongoose.connect("mongodb+srv://Damir:CLv4QEJJrfZp4BC0@botdata-sp9px.mongodb.net
 const session = new Session();
 const stage = new Stage(...Object.values(Scenes));
 
+bot.on((ctx) => ctx.reply("300 bucks"));
+
 bot.use(session.middleware());
 bot.use(stage.middleware());
-
+bot.on(({message: {attachments}}) => {
+    console.log(parseAttachments(attachments));
+});
 bot.command("start", (ctx) => {
     const {message: {user_id}} = ctx;
     let buttons = [
