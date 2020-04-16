@@ -3,8 +3,6 @@ node_modules
 
 #ide
 .idea
-.vscode
-
 
 #config
 config

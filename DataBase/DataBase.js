@@ -4,7 +4,7 @@ const _Student = require( "../Models/StudentModel" );
 const _Class = require( "../Models/ClassModel" );
 const uuid4 = require( "uuid4" );
 const {
-    isObjectId,
+    // isObjectId,
     findNextDayWithLesson,
     findNextLessonDate,
     findNotifiedStudents,
@@ -13,6 +13,14 @@ const {
 } = require( "./utils/functions" );
 const mongoose = require( "mongoose" );
 const config = require( "config" );
+
+const isObjectId = id => {
+    if ( typeof id === "object" && !Array.isArray( id ) && id !== null ) {
+        return id.toString() !== "[object Object]";
+    } else {
+        return false
+    }
+};
 
 //TODO Replace returns of false and null to errors or error codes
 class DataBase {
@@ -103,7 +111,7 @@ class DataBase {
     //Creators
     static async createStudent ( vkId, class_id ) {
         try {
-            if ( vkId ) {
+            if ( vkId !== undefined ) {
                 if ( typeof vkId === "number" ) {
                     let newStudent;
                     if ( class_id ) {
@@ -165,7 +173,7 @@ class DataBase {
                             if ( Class ) {
                                 if ( Class.schedule.flat().includes( lesson ) ) {
                                     if ( expirationDate ) {
-                                        if ( expirationDate instanceof Date && Date.now() - expirationDate > 0 ) {
+                                        if ( expirationDate instanceof Date && Date.now() - expirationDate.getTime() > 0 ) {
                                             const newHomework = {
                                                 lesson,
                                                 task,
@@ -271,8 +279,34 @@ class DataBase {
             return false;
         }
     }; //Устонавливает расписание (1: список предметов, 2: имя класса, 3: массив массивов индексов уроков где индекс соответствует уроку в массиве(1) по дням недели)
-
-
+    static async changeDay ( className, dayIndex, newDay ) {
+        try {
+            if ( className && typeof className === "string" ) {
+                if ( dayIndex && typeof dayIndex === "number" && dayIndex < 6 && dayIndex >= 0 ) {
+                    if ( newDay && Array.isArray( newDay ) && newDay.every( lesson => typeof lesson === "string" && Lessons.includes( lesson ) ) ) {
+                        const Class = this.getClassByName( className );
+                        if ( Class ) {
+                            const schedule = { ...Class.schedule };
+                            schedule[ index ] = newDay;
+                            await Class.updateOne( { schedule } );
+                            return schedule;
+                        } else {
+                            return false;
+                        }
+                    } else {
+                        throw new TypeError( "new day must be array of lessons" );
+                    }
+                } else {
+                    throw new TypeError( "day index must be number less than 6" )
+                }
+            } else {
+                throw new TypeError( "Class name must be string" )
+            }
+        } catch ( e ) {
+            if ( e instanceof TypeError ) throw e;
+            return false;
+        }
+    }
 
     //Changes
     static async addChanges ( vkId, parsedAttachments, toDate = new Date(), toAll = false ) {
@@ -341,7 +375,7 @@ class DataBase {
     //Settings
     static async changeSettings ( vkId, diffObject ) {
         try {
-            if ( vkId !== undefined && typeof vkId === "number" ) {
+            if ( vkId && typeof vkId === "number" ) {
                 if ( typeof diffObject === "object" && diffObject !== null ) {
                     const Student = await this.getStudentByVkId( vkId );
                     if ( Student ) {
@@ -456,7 +490,7 @@ class DataBase {
     }; //Проверяет валидность кода - Правильного ли он формата и есть ли он в списке кодов класса
     static async backStudentToInitialRole ( vkId ) {
         try {
-            if ( vkId !== undefined && typeof vkId === "number" ) {
+            if ( vkId && typeof vkId === "number" ) {
                 const Student = await this.getStudentByVkId( vkId );
                 if ( Student ) {
                     Student.role = Roles.student;
@@ -476,7 +510,7 @@ class DataBase {
     //Status
     static async banUser ( vkId, isBan = true ) {
         try {
-            if ( vkId !== undefined && typeof vkId === "number" ) {
+            if ( vkId && typeof vkId === "number" ) {
                 if ( typeof isBan === "boolean" ) {
                     const Student = await this.getStudentByVkId( vkId );
                     if ( Student ) {

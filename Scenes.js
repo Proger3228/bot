@@ -47,7 +47,7 @@ module.exports.createClassScene = new Scene('createClass',
     (ctx) => {
         const {message: {body}, scene: {leave, enter}} = ctx;
         const spacelessClassName = body.replace(/\s*/g, "");
-        if (/\d+[a-z]/i.test(spacelessClassName)) {
+        if (/\d+([a-z]|[а-я])/i.test(spacelessClassName)) {
             DataBase.createClass(spacelessClassName)
                 .then(result => {
                     if (result) {
