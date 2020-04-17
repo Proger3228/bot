@@ -27,6 +27,10 @@ mongoose.connect( "mongodb+srv://Damir:CLv4QEJJrfZp4BC0@botdata-sp9px.mongodb.ne
 const session = new Session();
 const stage = new Stage( ...Object.values( Scenes ) );
 
+( async () => {
+    console.log( ( await DataBase.getClassByName( "10Б" ) ) instanceof mongoose.Document )
+} )()
+
 bot.use( session.middleware() );
 bot.use( stage.middleware() );
 

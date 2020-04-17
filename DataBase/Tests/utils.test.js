@@ -148,5 +148,4 @@ describe( "createTestData", () => {
         } ) )
     } )
 
-    //TODO connection test but before remove auto populate
 } )

@@ -1,3 +1,4 @@
+// @ts-nocheck
 const { Roles, Lessons } = require( "../Models/utils" );
 
 const _Student = require( "../Models/StudentModel" );
@@ -24,7 +25,7 @@ const isObjectId = id => {
 
 //TODO Replace returns of false and null to errors or error codes
 class DataBase {
-    //Getters
+    //* Getters
     static async getStudentByVkId ( vkId ) {
         try {
             if ( vkId !== undefined && typeof vkId === "number" ) {
@@ -108,7 +109,7 @@ class DataBase {
         }
     }; //Возвращает список всех редакторов
 
-    //Creators
+    //* Creators
     static async createStudent ( vkId, class_id ) {
         try {
             if ( vkId !== undefined ) {
@@ -160,7 +161,7 @@ class DataBase {
         }
     }; //Создает и возвращает класс
 
-    //// Classes
+    //* Classes
 
     //Homework
     static async addHomework ( className, studentVkId, lesson, task, expirationDate ) {
@@ -258,7 +259,7 @@ class DataBase {
         return notificationArray;
     }; //
 
-    //Schedule
+    //* Schedule
     static async setSchedule ( className, lessonsIndexesByDays, lessonList = Lessons ) {
         try {
             if ( className && typeof className === "string" ) {
@@ -308,13 +309,13 @@ class DataBase {
         }
     }
 
-    //Changes
+    //*Changes
     static async addChanges ( vkId, parsedAttachments, toDate = new Date(), toAll = false ) {
         try {
             if ( vkId !== undefined && typeof vkId === 'number' ) {
                 if ( parsedAttachments && Array.isArray( parsedAttachments ) && parsedAttachments.every( at => typeof at === "string" && /[a-z]+\d+_\d+_.+/.test( at ) ) ) {
                     if ( toDate && toDate instanceof Date ) {
-                        const Student = await this.getStudentByVkId( vkId );
+                        const Student = await this.populate( await this.getStudentByVkId( vkId ) );
                         const newChanges = parsedAttachments.map( value => ( {
                             to: toDate,
                             value,
@@ -348,6 +349,7 @@ class DataBase {
             return false;
         }
     }; //
+
     static async getChanges ( className, date ) {
         try {
             if ( className && typeof className === "string" ) {
@@ -370,7 +372,7 @@ class DataBase {
         }
     }; //
 
-    //// Students
+    //* Students
 
     //Settings
     static async changeSettings ( vkId, diffObject ) {
@@ -403,7 +405,7 @@ class DataBase {
         }
     };
 
-    //Roles utils
+    //* Roles utils
     static async generateNewRoleUpCode ( className ) {
         try {
             if ( className && typeof className === "string" ) {
@@ -447,7 +449,7 @@ class DataBase {
     static async activateCode ( vkId, code ) {
         try {
             if ( uuid4.valid( code ) ) {
-                let Student = await this.getStudentByVkId( vkId );
+                let Student = await this.populate( await this.getStudentByVkId( vkId ) );
                 if ( Student ) {
                     if ( Student.class ) {
                         const isValid = Student.class.roleUpCodes.includes( code );
@@ -531,7 +533,7 @@ class DataBase {
         }
     }; //
 
-    //// Interactions
+    /// Interactions
     static async addStudentToClass ( StudentVkId, className ) {
         try {
             const Class = await this.getClassByName( className );
@@ -550,7 +552,7 @@ class DataBase {
     }; //Добавляет ученика в класс
     static async removeStudentFromClass ( StudentVkId ) {
         try {
-            const Student = await DataBase.getStudentByVkId( StudentVkId );
+            const Student = await this.populate( await DataBase.getStudentByVkId( StudentVkId ) );
             if ( Student ) {
                 const Class = Student.class;
                 if ( !Class ) return true;
@@ -567,7 +569,7 @@ class DataBase {
     }; //Удаляет ученика из класса
     static async changeClass ( StudentVkId, newClassName ) {
         try {
-            const Student = await this.getStudentByVkId( StudentVkId );
+            const Student = await this.populate( await this.getStudentByVkId( StudentVkId ) );
             if ( Student.class.name !== newClassName ) {
                 const newClass = await this.getClassByName( newClassName );
                 if ( newClass && Student ) {
@@ -591,6 +593,13 @@ class DataBase {
             return false;
         }
     }; //Меняет класс ученика
+
+    //* Population
+    static async populate ( document ) {
+        if ( document instanceof mongoose.Document ) {
+            return await document.populate().execPopulate()
+        }
+    }
 }
 
 module.exports.DataBase = DataBase;

@@ -1,16 +1,16 @@
-const mongoose = require("mongoose");
-const {Roles, checkValidTime} = require("./utils");
+// @ts-nocheck
+const mongoose = require( "mongoose" );
+const { Roles, checkValidTime } = require( "./utils" );
 
-const studentSchema = mongoose.Schema({
+const studentSchema = mongoose.Schema( {
     class: {
         type: mongoose.Schema.ObjectId,
-        ref: "Class",
-        autopopulate: true
+        ref: "Class"
     },
     role: {
         type: String,
         default: Roles.student,
-        enum: Object.values(Roles)
+        enum: Object.values( Roles )
     },
     vkId: {
         type: Number,
@@ -37,7 +37,7 @@ const studentSchema = mongoose.Schema({
     },
     lastHomeworkCheck: {
         type: Date,
-        default: new Date(0),
+        default: new Date( 0 ),
         validate: {
             validator: date => Date.now() - date >= 0,
             message: "Last check of homework time can`t be in the future"
@@ -47,8 +47,6 @@ const studentSchema = mongoose.Schema({
         default: false,
         type: Boolean
     }
-});
+} );
 
-studentSchema.plugin(require("mongoose-autopopulate"));
-
-module.exports = mongoose.model("Student", studentSchema);
+module.exports = mongoose.model( "Student", studentSchema );
