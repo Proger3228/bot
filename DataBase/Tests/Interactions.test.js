@@ -40,7 +40,7 @@ describe( "addStudentToClass", () => {
         return expect( result ).toBe( true );
     } );
     it( "should add student to class and class to student", async () => {
-        const newStudent = await DataBase.createStudent( Math.ceil( Math.random() * 100 + 1 ) );
+        const newStudent = await DataBase.createStudent( getUniqueVkId() );
 
         await DataBase.addStudentToClass( newStudent.vkId, MockClass.name );
 

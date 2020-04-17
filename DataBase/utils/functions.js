@@ -50,7 +50,6 @@ const isObjectId = id => {
 };
 
 const createTestData = async () => {
-    console.log( await ClassModel.find( {} ) );
     const Class = await DataBase.createClass( getUniqueClassName() );
     const Student = await DataBase.createStudent( getUniqueVkId(), Class._id );
     await Class.updateOne( { students: [ Student._id ] } );

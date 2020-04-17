@@ -596,8 +596,21 @@ class DataBase {
 
     //* Population
     static async populate ( document ) {
-        if ( document instanceof mongoose.Document ) {
-            return await document.populate().execPopulate()
+        try {
+            if ( document instanceof mongoose.Document ) {
+                if ( document.students ) {
+                    return await document.populate( "students" ).execPopulate();
+                } else if ( document.class ) {
+                    return await document.populate( "class" ).execPopulate();
+                } else {
+                    return document
+                }
+            } else {
+                throw new TypeError( "Argument must be a Document" )
+            }
+        } catch ( e ) {
+            if ( e instanceof TypeError ) { throw e; }
+            return null;
         }
     }
 }

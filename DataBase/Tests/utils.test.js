@@ -116,8 +116,8 @@ describe( "lessonsIndexesToLessonsNames", () => {
 
 describe( "createTestData", () => {
     afterEach( async () => {
-        await ClassModel.remove( {} );
-        await StudentModel.remove( {} );
+        await ClassModel.deleteMany( {} );
+        await StudentModel.deleteMany( {} );
     } )
 
     it( "should return class with all properties", async () => {

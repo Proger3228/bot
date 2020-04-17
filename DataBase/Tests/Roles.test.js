@@ -286,7 +286,7 @@ describe( "backStudentToInitialRole", () => {
 describe( "banUser", () => {
     let MockStudent;
     beforeAll( async () => {
-        MockStudent = await DataBase.createStudent( Math.ceil( Math.random() * 100 + 1 ) );
+        MockStudent = await DataBase.createStudent( getUniqueVkId() );
     } );
     afterAll( async () => {
         await Student.deleteMany( {} );
