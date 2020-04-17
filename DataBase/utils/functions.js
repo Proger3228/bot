@@ -1,3 +1,5 @@
+const ClassModel = require( "../../Models/ClassModel.js" );
+
 const { DataBase } = require( "../DataBase.js" );
 
 
@@ -48,6 +50,7 @@ const isObjectId = id => {
 };
 
 const createTestData = async () => {
+    console.log( await ClassModel.find( {} ) );
     const Class = await DataBase.createClass( getUniqueClassName() );
     const Student = await DataBase.createStudent( getUniqueVkId(), Class._id );
     await Class.updateOne( { students: [ Student._id ] } );
@@ -102,11 +105,17 @@ const checkIsToday = ( date, to = new Date() ) => {
 };
 
 const getUniqueClassName = ( dpt = 0 ) => {
+    if ( currentClassNumber === 11 ) {
+        currentClassNumber = 1;
+        currentClassLetterIndex++;
+        if ( currentClassLetterIndex > letters.length ) {
+            throw new Error( "Too many classes, can't find unique class name" );
+        }
+    }
     const num = ( currentClassNumber++ ).toString();
-    const letter = letters[ currentClassLetterIndex++ ];
+    const letter = letters[ currentClassLetterIndex ];
 
     const className = num + letter;
-
     return className
 }
 const getUniqueVkId = ( dpt = 0 ) => {

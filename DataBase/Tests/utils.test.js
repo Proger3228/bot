@@ -1,9 +1,12 @@
+// @ts-nocheck
 const StudentModel = require( "../../Models/StudentModel" );
 
 const ClassModel = require( "../../Models/ClassModel" );
 
 const { findNextDayWithLesson, findNextLessonDate, findNotifiedStudents, lessonsIndexesToLessonsNames, createTestData } = require( "../utils/functions" );
 const config = require( "config" );
+
+const { DataBase } = require( "../DataBase" );
 
 const createMockStudent = ( { ne: notificationsEnabled = true, nt: notificationTime = "00:00", lhc: lastHomeworkCheck = new Date( 0 ) } = {} ) => {
     return {
@@ -112,7 +115,7 @@ describe( "lessonsIndexesToLessonsNames", () => {
 } );
 
 describe( "createTestData", () => {
-    afterAll( async () => {
+    afterEach( async () => {
         await ClassModel.remove( {} );
         await StudentModel.remove( {} );
     } )
@@ -120,7 +123,7 @@ describe( "createTestData", () => {
     it( "should return class with all properties", async () => {
         const { Class } = await createTestData();
 
-        expect( Class ).toBeDefined();
+        expect( Class ).not.toBeNull();
         expect( Class ).toEqual( expect.objectContaining( {
             name: expect.any( String ),
             students: expect.arrayContaining( [ expect.any( Object ) ] ),
@@ -134,7 +137,7 @@ describe( "createTestData", () => {
     it( "should return student with all properties", async () => {
         const { Student } = await createTestData();
 
-        expect( Student ).toBeDefined();
+        expect( Student ).not.toBeNull();
         expect( Student ).toEqual( expect.objectContaining( {
             role: expect.any( String ),
             vkId: expect.any( Number ),
@@ -148,4 +151,19 @@ describe( "createTestData", () => {
         } ) )
     } )
 
+
+    it( "should return connected documents", async () => {
+        const { Student, Class } = await createTestData();
+
+        expect( Student.class ).toBeTruthy();
+        expect( Class.students.every( st => st != undefined ) ).toBe( true );
+
+        const students = [];
+        for ( student_id of Class.students ) {
+            students.push( await DataBase.getStudentBy_Id( student_id ) );
+        }
+        const foundClass = await DataBase.getClassBy_Id( Student.class );
+        expect( students.every( st => st !== null ) ).toBe( true );
+        expect( foundClass ).not.toBeNull();
+    } )
 } )
