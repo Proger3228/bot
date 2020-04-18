@@ -310,26 +310,26 @@ class DataBase {
     }
 
     //*Changes
-    static async addChanges ( vkId, contents, toDate = new Date(), toAll = false ) {
+    static async addChanges ( vkId, content, toDate = new Date(), toAll = false ) {
         try {
             if ( vkId !== undefined && typeof vkId === 'number' ) {
-                if ( checkChangeContentsValidity( contents ) ) {
+                if ( this.validateChangeContent( content ) ) {
                     if ( toDate && toDate instanceof Date ) {
                         const Student = await this.populate( await this.getStudentByVkId( vkId ) );
-                        const newChanges = contents.map( content => ( {
+                        const newChange = {
                             to: toDate,
                             createdBy: vkId,
                             ...content
-                        } ) );
+                        };
                         if ( toAll ) {
                             const classes = await _Class.find( {} );
                             for ( const _class of classes ) {
-                                await _class.updateOne( { changes: [ ..._class.changes, ...newChanges ] } )
+                                await _class.updateOne( { changes: [ ..._class.changes, newChange ] } )
                             }
                             return true;
                         } else {
                             if ( Student.class ) {
-                                await Student.class.updateOne( { changes: [ ...Student.class.changes, ...newChanges ] } );
+                                await Student.class.updateOne( { changes: [ ...Student.class.changes, newChange ] } );
                                 return true;
                             } else {
                                 return false; //Не состоя в классе вы можете добавлять изменения только всем классам
@@ -339,13 +339,14 @@ class DataBase {
                         throw new TypeError( "toDate must be date" );
                     }
                 } else {
-                    throw new TypeError( "Contents must be array of attachments and texts" )
+                    throw new TypeError( "Contents must be object with poles attachments and text" )
                 }
             } else {
                 throw new TypeError( "VkId must be number" );
             }
         } catch ( e ) {
             if ( e instanceof TypeError ) throw e;
+            console.log( e )
             return false;
         }
     }; //
@@ -614,11 +615,11 @@ class DataBase {
         }
     } //
 
-    static checkChangeContentValidity ( content ) {
+    static validateChangeContent ( content ) {
         if ( content ) {
             if ( content !== null && content.toString() === "[object Object]" ) {
                 if ( Object.keys( content ).length > 0 && Object.keys( content ).length <= 2 && Object.keys( content ).every( key => [ "attachments", "text" ].includes( key ) ) ) {
-                    if ( content.attachments && ( typeof content.attachments !== "string" || !/[a-z]+\d+_\d+_.+/.test( content.attachments ) ) ) {
+                    if ( content.attachments && this.validateAttachment( content.attachments ) ) {
                         return false;
                     }
                     if ( content.text && typeof content.text !== "string" ) {
@@ -634,6 +635,10 @@ class DataBase {
         };
         return false;
     } //
+
+    static validateAttachment ( attachment ) {
+        return typeof attachment !== "string" || !/[a-z]+\d+_\d+_.+/.test( attachment );
+    }
 }
 
 module.exports.DataBase = DataBase;

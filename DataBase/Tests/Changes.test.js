@@ -30,92 +30,97 @@ describe( "addChanges", () => {
     } );
 
     it( "should return true if all is ok", async () => {
-        const attachments = [
-            "photo123_123_as41", "video321_321_a12d"
-        ];
+        const content = {
+            attachments: "photo123_123_as41",
+            text: "changes"
+        };
 
-        const result = await DataBase.addChanges( MockStudent.vkId, attachments );
+        const result = await DataBase.addChanges( MockStudent.vkId, content );
 
         return expect( result ).toBe( true );
     } );
     it( "should add all changes to class", async () => {
-        const attachments = [
-            "photo123_123_as41", "video321_321_a12d"
-        ];
+        const content = {
+            attachments: "photo123_123_as41",
+            text: "changes"
+        };
 
-        await DataBase.addChanges( MockStudent.vkId, attachments );
+        await DataBase.addChanges( MockStudent.vkId, content );
 
         const updatedClass = await DataBase.getClassBy_Id( MockClass._id );
 
-        console.log( "UPDATED_CLASS: ", updatedClass );
-
-        expect( updatedClass.changes.length ).toBe( 2 );
-        expect( updatedClass.changes.some( ch => ch.value === attachments[ 0 ] ) ).toBe( true );
-        expect( updatedClass.changes.some( ch => ch.value === attachments[ 1 ] ) ).toBe( true );
+        expect( updatedClass.changes.length ).toBe( 1 );
+        expect( updatedClass.changes.find( change => change.attachments === content.attachments && change.text === content.text ) ).not.toBeUndefined();
     } );
     it( "should add changes to all classes if toAll prop passed", async () => {
-        const attachments = [
-            "photo123_123_as41", "video321_321_a12d"
-        ];
+        const content = {
+            attachments: "photo123_123_as41",
+            text: "changes"
+        };
 
-        await DataBase.addChanges( MockStudent.vkId, attachments, undefined, true );
+        await DataBase.addChanges( MockStudent.vkId, content, undefined, true );
 
         const updatedClass = await DataBase.getClassBy_Id( MockClass._id );
         const updatedClass1 = await DataBase.getClassBy_Id( ClassWithoutStudent._id );
 
-        expect( updatedClass.changes.length ).toBe( 2 );
-        expect( updatedClass.changes.some( ch => ch.value === attachments[ 0 ] ) ).toBe( true );
-        expect( updatedClass.changes.some( ch => ch.value === attachments[ 1 ] ) ).toBe( true );
-        expect( updatedClass1.changes.length ).toBe( 2 );
-        expect( updatedClass1.changes.some( ch => ch.value === attachments[ 0 ] ) ).toBe( true );
-        expect( updatedClass1.changes.some( ch => ch.value === attachments[ 1 ] ) ).toBe( true );
+        expect( updatedClass.changes.length ).toBe( 1 );
+        expect( updatedClass.changes.find( change => change.attachments === content.attachments && change.text === content.text ) ).not.toBeUndefined();
+        expect( updatedClass1.changes.length ).toBe( 1 );
+        expect( updatedClass1.changes.find( change => change.attachments === content.attachments && change.text === content.text ) ).not.toBeUndefined();
     } );
-    it( "shouldn\'t add changes if student is not in any class and toAll prop isn\'t passed", async () => {
-        const attachments = [
-            "photo123_123_as41", "video321_321_a12d"
-        ];
+    it( "shouldn't add changes if student is not in any class and toAll prop isn\'t passed", async () => {
+        const content = {
+            attachments: "photo123_123_as41",
+            text: "changes"
+        };
 
-        const result = await DataBase.addChanges( StudentWithoutClass.vkId, attachments, undefined );
+        const result = await DataBase.addChanges( StudentWithoutClass.vkId, content );
 
         const updatedClass = await DataBase.getClassBy_Id( MockClass._id );
 
         expect( result ).toBe( false );
         expect( updatedClass.changes.length ).toBe( 0 );
     } );
+
     it( "should add changes if student is not in any class and toAll prop is passed", async () => {
-        const attachments = [
-            "photo123_123_as41", "video321_321_a12d"
-        ];
-        const result = await DataBase.addChanges( StudentWithoutClass.vkId, attachments, undefined, true );
+        const content = {
+            attachments: "photo123_123_as41",
+            text: "changes"
+        };
+
+        const result = await DataBase.addChanges( StudentWithoutClass.vkId, content, undefined, true );
         const updatedClass = await DataBase.getClassBy_Id( MockClass._id );
 
         expect( result ).toBe( true );
-        expect( updatedClass.changes.length ).toBe( 2 );
-        expect( updatedClass.changes.some( ch => ch.value === attachments[ 0 ] ) ).toBe( true );
-        expect( updatedClass.changes.some( ch => ch.value === attachments[ 1 ] ) ).toBe( true );
+        expect( updatedClass.changes.length ).toBe( 1 );
+        expect( updatedClass.changes.find( change => change.attachments === content.attachments && change.text === content.text ) ).not.toBeUndefined();
     } );
 } );
 
 describe( "getChanges", () => {
-    const changes = [ "photo123_123_awd1", "photo123_123_awd1" ];
+    const content1 = {
+        attachments: "photo111_111_as41",
+        text: "changes1"
+    };
+    const content2 = {
+        attachments: "photo222_222_as41",
+        text: "changes2"
+    };
+
     let className;
     beforeAll( async () => {
         const { Class: c, Student: s } = await createTestData();
         className = c.name;
-        await DataBase.addChanges( s.vkId, changes );
-        await DataBase.addChanges( s.vkId, [ "photo123_123_123" ] );
-        changes.push( "photo123_123_123" );
-    } );
-    afterAll( async () => {
-        await Class.deleteMany( {} );
-        await Student.deleteMany( {} );
+        await DataBase.addChanges( s.vkId, content1 );
+        await DataBase.addChanges( s.vkId, content2 );
     } );
 
     it( "should return array of changes for that class", async () => {
         const result = await DataBase.getChanges( className );
-        expect( result.length ).toBe( changes.length );
-        for ( let i = 0; i < changes.length; i++ ) {
-            expect( result.includes( changes[ i ] ) );
-        }
+
+        expect( Array.isArray( result ) ).toBe( true );
+        expect( result.length ).toBe( 2 );
+        expect( result.find( change => change.attachments === content1.attachments && change.text === content1.text ) ).not.toBeUndefined();
+        expect( result.find( change => change.attachments === content2.attachments && change.text === content2.text ) ).not.toBeUndefined();
     } );
 } );

@@ -32,7 +32,7 @@ describe( "checkChangeContentValidity", () => {
             text: "text"
         }
 
-        const result = DataBase.checkChangeContentValidity( data );
+        const result = DataBase.validateChangeContent( data );
 
         expect( result ).toBe( true );
     } )
@@ -42,7 +42,7 @@ describe( "checkChangeContentValidity", () => {
             text: "text"
         }
 
-        const result = DataBase.checkChangeContentValidity( data );
+        const result = DataBase.validateChangeContent( data );
 
         expect( result ).toBe( true );
     } )
@@ -51,7 +51,7 @@ describe( "checkChangeContentValidity", () => {
             attachments: "photo227667805_457239951_d18b007165cb0d264e"
         }
 
-        const result = DataBase.checkChangeContentValidity( data );
+        const result = DataBase.validateChangeContent( data );
 
         expect( result ).toBe( true );
     } )
@@ -62,7 +62,7 @@ describe( "checkChangeContentValidity", () => {
             text: {}
         }
 
-        const result = DataBase.checkChangeContentValidity( data );
+        const result = DataBase.validateChangeContent( data );
 
         expect( result ).toBe( false );
     } )
@@ -77,8 +77,8 @@ describe( "checkChangeContentValidity", () => {
             text: 1
         }
 
-        const result1 = DataBase.checkChangeContentValidity( data1 );
-        const result2 = DataBase.checkChangeContentValidity( data2 );
+        const result1 = DataBase.validateChangeContent( data1 );
+        const result2 = DataBase.validateChangeContent( data2 );
 
         expect( result1 ).toBe( false );
         expect( result2 ).toBe( false );
@@ -89,7 +89,7 @@ describe( "checkChangeContentValidity", () => {
             attachments: "not valid"
         }
 
-        const result = DataBase.checkChangeContentValidity( data );
+        const result = DataBase.validateChangeContent( data );
 
         expect( result ).toBe( false );
     } )
@@ -97,7 +97,7 @@ describe( "checkChangeContentValidity", () => {
     it( "should return false if no poles passed", () => {
         const data = {}
 
-        const result = DataBase.checkChangeContentValidity( data );
+        const result = DataBase.validateChangeContent( data );
 
         expect( result ).toBe( false );
     } )
@@ -109,7 +109,7 @@ describe( "checkChangeContentValidity", () => {
             somethingElse: ""
         }
 
-        const result = DataBase.checkChangeContentValidity( data );
+        const result = DataBase.validateChangeContent( data );
 
         expect( result ).toBe( false );
     } )
@@ -120,7 +120,7 @@ describe( "checkChangeContentValidity", () => {
             notText: "text",
         }
 
-        const result = DataBase.checkChangeContentValidity( data );
+        const result = DataBase.validateChangeContent( data );
 
         expect( result ).toBe( false );
     } )
@@ -130,9 +130,9 @@ describe( "checkChangeContentValidity", () => {
         const data2 = new Promise( () => { } );
         const data3 = []
 
-        const result1 = DataBase.checkChangeContentValidity( data1 );
-        const result2 = DataBase.checkChangeContentValidity( data2 );
-        const result3 = DataBase.checkChangeContentValidity( data3 );
+        const result1 = DataBase.validateChangeContent( data1 );
+        const result2 = DataBase.validateChangeContent( data2 );
+        const result3 = DataBase.validateChangeContent( data3 );
 
         expect( result1 ).toBe( false );
         expect( result2 ).toBe( false );
