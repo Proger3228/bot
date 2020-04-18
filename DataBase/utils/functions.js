@@ -106,7 +106,7 @@ const checkIsToday = ( date, to = new Date() ) => {
     return to.getDate() === date.getDate() && date.getMonth() === to.getMonth() && date.getFullYear() === to.getFullYear();
 };
 
-const getUniqueClassName = ( dpt = 0 ) => {
+const getUniqueClassName = () => {
     if ( currentClassNumber === 11 ) {
         currentClassNumber = 1;
         currentClassLetterIndex++;
@@ -120,7 +120,7 @@ const getUniqueClassName = ( dpt = 0 ) => {
     const className = num + letter;
     return className
 }
-const getUniqueVkId = ( dpt = 0 ) => {
+const getUniqueVkId = () => {
     const id = curentVkId++;
 
     return id;
