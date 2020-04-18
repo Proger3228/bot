@@ -52,9 +52,9 @@ describe( "addStudentToClass", () => {
         expect( updatedStudent.class._id.toString() ).toEqual( updatedClass._id.toString() );
     } );
     it( "should return false if class/student are undefined", async () => {
-        const resultWithWrongVkId = await DataBase.addStudentToClass( 0, MockClass.name );
+        const resultWithWrongVkId = await DataBase.addStudentToClass( -1, MockClass.name );
         const resultWithWrongClassName = await DataBase.addStudentToClass( MockStudent.vkId, "not a name" );
-        const resultWithBothWrong = await DataBase.addStudentToClass( 0, "not a name" );
+        const resultWithBothWrong = await DataBase.addStudentToClass( -1, "not a name" );
 
         expect( resultWithWrongVkId ).toBe( false );
         expect( resultWithWrongClassName ).toBe( false );
@@ -140,8 +140,8 @@ describe( "changeClass", () => {
         const updatedClass = await DataBase.getClassBy_Id( MockClass._id );
         const updatedStudent = await DataBase.getStudentBy_Id( MockStudent._id );
 
-        expect( updatedClass.students.some( student => student._id.toString() === updatedStudent._id.toString() ) ).toBe( true );
-        expect( updatedStudent.class.toString() ).toBe( updatedClass.toString() );
+        expect( updatedClass.students.find( student => student._id.toString() === updatedStudent._id.toString() ) ).not.toBeUndefined();
+        expect( updatedStudent.class.toString() ).toBe( updatedClass._id.toString() );
     } );
     it( "should return false if newClass/student are undefined", async () => {
         const newClass = await DataBase.createClass( getUniqueClassName() );
