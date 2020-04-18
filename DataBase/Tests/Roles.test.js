@@ -220,7 +220,7 @@ describe( "activateRoleUpCode", () => {
             .catch( err => expect( err ).toBeInstanceOf( TypeError ) );
     } );
     it( "should return false if can`t find student by VkId", async () => {
-        const response = await DataBase.activateCode( 1488, uuid4() );
+        const response = await DataBase.activateCode( -1, uuid4() );
 
         return expect( response ).toBe( false );
     } );

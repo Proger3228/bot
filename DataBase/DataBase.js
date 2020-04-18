@@ -612,6 +612,9 @@ class DataBase {
                     return document
                 }
             } else {
+                if ( document === null ) {
+                    return null;
+                }
                 throw new TypeError( "Argument must be a Document" )
             }
         } catch ( e ) {
