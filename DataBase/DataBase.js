@@ -248,11 +248,12 @@ class DataBase {
         const classes = await _Class.find( {} );
         const notificationArray = []; //Массив массивов типа [[Массив вк айди учеников], [Массив дз]]
         for ( const cl of classes ) {
-            if ( cl.homework.length && cl.students.length ) {
+            const populatedClass = await this.populate( cl );
+            if ( populatedClass.homework.length && populatedClass.students.length ) {
                 const date = currentDateForTest || Date();
                 date.setDate( date.getDate() + 1 ); // Берем дз на некст день
-                const notifiedStudentIds = findNotifiedStudents( cl.students, currentDateForTest || new Date(), config.get( "REMIND_AFTER" ) ).map( ( { vkId } ) => vkId );
-                const homework = cl.homework.filter( ( { to } ) => checkIsToday( to, date ) );
+                const notifiedStudentIds = findNotifiedStudents( populatedClass.students, currentDateForTest || new Date(), config.get( "REMIND_AFTER" ) ).map( ( { vkId } ) => vkId );
+                const homework = populatedClass.homework.filter( ( { to } ) => checkIsToday( to, date ) );
                 notificationArray.push( [ notifiedStudentIds, homework ] );
             }
         }
@@ -476,7 +477,7 @@ class DataBase {
                     throw new TypeError( "Code should be valid uuid4 code" );
                 }
             } else {
-                throw new TypeError( "VkId must be number")
+                throw new TypeError( "VkId must be number" )
             }
         } catch ( e ) {
             if ( e instanceof TypeError ) throw e;

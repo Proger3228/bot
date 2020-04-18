@@ -60,10 +60,13 @@ const createTestData = async () => {
 };
 
 const findNotifiedStudents = ( students, notificationDate, maxRemindFrequency ) => {
+    console.log( students )
     return students
         .filter( ( { settings: sets, lastHomeworkCheck } ) => {
             if ( sets.notificationsEnabled ) { //Проверяет что уведомления включены
-                if ( notificationDate.getHours() === +sets.notificationTime.match( /^\d*/ )[ 0 ] && Math.abs( notificationDate.getMinutes() - +sets.notificationTime.match( /\d*$/ ) ) <= 1 ) { //Проверяет что время совпадает или почти
+                if (
+                    notificationDate.getHours() === +sets.notificationTime.match( /^\d*/ )[ 0 ] &&
+                    Math.abs( notificationDate.getMinutes() - +sets.notificationTime.match( /\d*$/ ) ) <= 1 ) { //Проверяет что время совпадает или почти
                     if ( ( notificationDate - lastHomeworkCheck ) >= maxRemindFrequency ) { //Проверяет что чел недавно (3 часа) сам не чекал дз}
                         return true;
                     }
