@@ -128,7 +128,6 @@ describe( "getAllContributors", () => {
     let student2Id = getUniqueVkId();
     let student3Id = getUniqueVkId();
     beforeAll( async () => {
-
         const Student1 = await DataBase.createStudent( student1Id );
         const Student2 = await DataBase.createStudent( student2Id );
         await DataBase.createStudent( student3Id );
@@ -140,10 +139,11 @@ describe( "getAllContributors", () => {
     } );
 
     it( "should return array of contributors", async () => {
-        const result = await DataBase.getAllContributors();
+        const result = await DataBase.getAllContributors().then( contributors => contributors.map( contributor => contributor.vkId ) );
 
         expect( Array.isArray( result ) ).toBe( true );
         expect( result.length ).toBe( 2 );
+        console.log( result.includes( student2Id ), result.includes( student1Id ), !result.includes( student3Id ) )
         expect( result.includes( student2Id ) && result.includes( student1Id ) && !result.includes( student3Id ) ).toBe( true );
     } );
 } );

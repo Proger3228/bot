@@ -378,7 +378,7 @@ class DataBase {
     //Settings
     static async changeSettings ( vkId, diffObject ) {
         try {
-            if ( vkId && typeof vkId === "number" ) {
+            if ( vkId !== undefined && typeof vkId === "number" ) {
                 if ( typeof diffObject === "object" && diffObject !== null ) {
                     const Student = await this.getStudentByVkId( vkId );
                     if ( Student ) {
@@ -449,30 +449,34 @@ class DataBase {
     }; //Убирает код из списка кодов класса
     static async activateCode ( vkId, code ) {
         try {
-            if ( uuid4.valid( code ) ) {
-                let Student = await this.populate( await this.getStudentByVkId( vkId ) );
-                if ( Student ) {
-                    if ( Student.class ) {
-                        const isValid = Student.class.roleUpCodes.includes( code );
-                        if ( isValid ) {
-                            const removed = await this.removeRoleUpCode( Student.class.name, code );
-                            if ( removed ) {
-                                await Student.updateOne( { role: Roles.contributor } );
-                                return true;
+            if ( vkId !== undefined && typeof vkId === "number" ) {
+                if ( uuid4.valid( code ) ) {
+                    let Student = await this.populate( await this.getStudentByVkId( vkId ) );
+                    if ( Student ) {
+                        if ( Student.class ) {
+                            const isValid = Student.class.roleUpCodes.includes( code );
+                            if ( isValid ) {
+                                const removed = await this.removeRoleUpCode( Student.class.name, code );
+                                if ( removed ) {
+                                    await Student.updateOne( { role: Roles.contributor } );
+                                    return true;
+                                } else {
+                                    return false;
+                                }
                             } else {
                                 return false;
                             }
                         } else {
-                            return false;
+                            throw new TypeError( "Student must have class property to activate code" );
                         }
                     } else {
-                        throw new TypeError( "Student must have class property to activate code" );
+                        return false;
                     }
                 } else {
-                    return false;
+                    throw new TypeError( "Code should be valid uuid4 code" );
                 }
             } else {
-                throw new TypeError( "Code should be valid uuid4 code" );
+                throw new TypeError( "VkId must be number")
             }
         } catch ( e ) {
             if ( e instanceof TypeError ) throw e;
@@ -493,7 +497,7 @@ class DataBase {
     }; //Проверяет валидность кода - Правильного ли он формата и есть ли он в списке кодов класса
     static async backStudentToInitialRole ( vkId ) {
         try {
-            if ( vkId && typeof vkId === "number" ) {
+            if ( vkId !== undefined && typeof vkId === "number" ) {
                 const Student = await this.getStudentByVkId( vkId );
                 if ( Student ) {
                     Student.role = Roles.student;
@@ -513,7 +517,7 @@ class DataBase {
     //Status
     static async banUser ( vkId, isBan = true ) {
         try {
-            if ( vkId && typeof vkId === "number" ) {
+            if ( vkId !== undefined && typeof vkId === "number" ) {
                 if ( typeof isBan === "boolean" ) {
                     const Student = await this.getStudentByVkId( vkId );
                     if ( Student ) {
