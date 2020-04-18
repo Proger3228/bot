@@ -310,16 +310,16 @@ class DataBase {
     }
 
     //*Changes
-    static async addChanges ( vkId, parsedAttachments, toDate = new Date(), toAll = false ) {
+    static async addChanges ( vkId, contents, toDate = new Date(), toAll = false ) {
         try {
             if ( vkId !== undefined && typeof vkId === 'number' ) {
-                if ( parsedAttachments && Array.isArray( parsedAttachments ) && parsedAttachments.every( at => typeof at === "string" && /[a-z]+\d+_\d+_.+/.test( at ) ) ) {
+                if ( checkChangeContentsValidity( contents ) ) {
                     if ( toDate && toDate instanceof Date ) {
                         const Student = await this.populate( await this.getStudentByVkId( vkId ) );
-                        const newChanges = parsedAttachments.map( value => ( {
+                        const newChanges = contents.map( content => ( {
                             to: toDate,
-                            value,
-                            createdBy: vkId
+                            createdBy: vkId,
+                            ...content
                         } ) );
                         if ( toAll ) {
                             const classes = await _Class.find( {} );
@@ -339,7 +339,7 @@ class DataBase {
                         throw new TypeError( "toDate must be date" );
                     }
                 } else {
-                    throw new TypeError( "Attachments must be array of attachments" )
+                    throw new TypeError( "Contents must be array of attachments and texts" )
                 }
             } else {
                 throw new TypeError( "VkId must be number" );
@@ -594,7 +594,7 @@ class DataBase {
         }
     }; //Меняет класс ученика
 
-    //* Population
+    //* Helpers
     static async populate ( document ) {
         try {
             if ( document instanceof mongoose.Document ) {
@@ -612,7 +612,28 @@ class DataBase {
             if ( e instanceof TypeError ) { throw e; }
             return null;
         }
-    }
+    } //
+
+    static checkChangeContentValidity ( content ) {
+        if ( content ) {
+            if ( content !== null && content.toString() === "[object Object]" ) {
+                if ( Object.keys( content ).length > 0 && Object.keys( content ).length <= 2 && Object.keys( content ).every( key => [ "attachments", "text" ].includes( key ) ) ) {
+                    if ( content.attachments && ( typeof content.attachments !== "string" || !/[a-z]+\d+_\d+_.+/.test( content.attachments ) ) ) {
+                        return false;
+                    }
+                    if ( content.text && typeof content.text !== "string" ) {
+                        return false;
+                    }
+                    return true;
+                } else {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        };
+        return false;
+    } //
 }
 
 module.exports.DataBase = DataBase;

@@ -38,7 +38,7 @@ describe( "addChanges", () => {
 
         return expect( result ).toBe( true );
     } );
-    it( "should add changes all to class", async () => {
+    it( "should add all changes to class", async () => {
         const attachments = [
             "photo123_123_as41", "video321_321_a12d"
         ];
@@ -46,6 +46,9 @@ describe( "addChanges", () => {
         await DataBase.addChanges( MockStudent.vkId, attachments );
 
         const updatedClass = await DataBase.getClassBy_Id( MockClass._id );
+
+        console.log( "UPDATED_CLASS: ", updatedClass );
+
         expect( updatedClass.changes.length ).toBe( 2 );
         expect( updatedClass.changes.some( ch => ch.value === attachments[ 0 ] ) ).toBe( true );
         expect( updatedClass.changes.some( ch => ch.value === attachments[ 1 ] ) ).toBe( true );
