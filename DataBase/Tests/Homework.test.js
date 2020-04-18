@@ -6,8 +6,8 @@ const
 const { getUniqueClassName, getUniqueVkId } = require( "../utils/functions" );
 
 //TODO remove this sheat
-const createTestData = async ( studentVkIds, className, isAddHomework = true ) => {
-    let MockClass = await DataBase.createClass( className );
+const createTestData = async ( studentVkIds, isAddHomework = true ) => {
+    let MockClass = await DataBase.createClass( getUniqueClassName() );
 
     await MockClass.updateOne( {
         schedule: [
@@ -16,9 +16,9 @@ const createTestData = async ( studentVkIds, className, isAddHomework = true ) =
     } );
 
     if ( isAddHomework ) {
-        await DataBase.addHomework( MockClass.name, 1488, "Русский", "1", new Date( 2020, 0, 2 ) );
-        await DataBase.addHomework( MockClass.name, 1488, "Математика", "2", new Date( 2020, 0, 2 ) );
-        await DataBase.addHomework( MockClass.name, 1488, "Математика", "2", new Date( 2019, 0, 2 ) ); //Не должен добавляться
+        await DataBase.addHomework( MockClass.name, -1, "Русский", "1", new Date( 2020, 0, 2 ) );
+        await DataBase.addHomework( MockClass.name, -1, "Математика", "2", new Date( 2020, 0, 2 ) );
+        await DataBase.addHomework( MockClass.name, -1, "Математика", "2", new Date( 2019, 0, 2 ) ); //Не должен добавляться
     }
 
     for ( let id of studentVkIds ) {
@@ -42,8 +42,16 @@ describe( "addHomework", () => {
         } )
     } );
     afterEach( async () => {
-        const _class = await DataBase.getClassBy_Id( MockClass._id );
-        await _class.updateOne( { homework: [] } );
+        await Class.deleteMany( {} );
+        MockClass = await DataBase.createClass( getUniqueClassName() );
+        await MockClass.updateOne( {
+            schedule: [
+                [ "Математика", "Русский", "Английский" ],
+                [ "Английский", "История", "ОБЖ" ],
+                [ "Математика", "История", "Обществознание" ],
+                [ "Русский", "Английский", "Обществознание" ]
+            ]
+        } )
     } );
     afterAll( async () => {
         await Class.deleteMany( {} )
@@ -103,7 +111,19 @@ describe( "getHomework", () => {
     afterAll( async () => {
         await Class.deleteMany( {} )
     } );
+    afterEach( async () => {
+        await Class.deleteMany( {} );
+        MockClass = await DataBase.createClass( getUniqueClassName() );
+        await MockClass.updateOne( {
+            schedule: [
+                [ "Математика", "Русский", "Английский" ]
+            ]
+        } );
 
+        await DataBase.addHomework( MockClass.name, 1488, "Русский", "Пошалить )" );
+        await DataBase.addHomework( MockClass.name, 1488, "Математика", "Да" );
+        await DataBase.addHomework( MockClass.name, 1488, "Английский", "Нет", new Date( 2020, 0, 1 ) );
+    } )
     it( "should return list of homework", async () => {
         const result = await DataBase.getHomework( MockClass.name );
 
@@ -122,26 +142,35 @@ describe( "getHomework", () => {
 describe( "parseHomeworkToNotifications", () => {
     let MockClass1;
     let MockClass2;
-    let studentVkIds1 = [ 1, 2 ];
-    let studentVkIds2 = [ 3, 4 ];
+    let studentVkIds1 = [ getUniqueVkId(), getUniqueVkId() ];
+    let studentVkIds2 = [ getUniqueVkId(), getUniqueVkId() ];
     beforeAll( async () => {
-        MockClass1 = await createTestData( studentVkIds1, "1A" );
-        MockClass2 = await createTestData( studentVkIds2, "2A", false );
+        MockClass1 = await createTestData( studentVkIds1 );
+        MockClass2 = await createTestData( studentVkIds2, false );
     } );
     afterAll( async () => {
         await Class.deleteMany( {} );
         await Student.deleteMany( {} );
     } );
-
+    afterEach( async () => {
+        await Class.deleteMany( {} )
+        await Student.deleteMany( {} )
+        MockClass1 = await createTestData( studentVkIds1 );
+        MockClass2 = await createTestData( studentVkIds2, false );
+    } )
     it( "should return array of arrays where first element is array of vkIds and second is array of homework for them", async () => {
         const [ notificationArray1, notificationArray2 ] = await DataBase.parseHomeworkToNotifications( new Date( 2020, 0, 1, 17 ) );
-        expect( notificationArray1 instanceof Array ).toBe( true );
+
+        expect( notificationArray1 instanceof Array ).toBe( true ); //[vkIds, homework]
         expect( notificationArray2 ).toBeUndefined(); //Потому что дз нету
+
         expect( notificationArray1[ 0 ] instanceof Array ).toBe( true );
         expect( notificationArray1[ 1 ] instanceof Array ).toBe( true );
-        expect( notificationArray1[ 0 ].length ).toBe( 2 );
-        expect( notificationArray1[ 0 ].includes( 1 ) && notificationArray1[ 0 ].includes( 2 ) ).toBe( true );
-        expect( notificationArray1[ 1 ].length ).toBe( 2 );
-        expect( notificationArray1[ 1 ].find( e => e.task === "1" ) && notificationArray1[ 1 ].find( e => e.task === "2" ) ).toBeTruthy();
+
+        expect( notificationArray1[ 0 ].every( vkId => studentVkIds1.includes( vkId ) ) ).toBe( true );
+        expect( notificationArray1[ 1 ].find( e => e.task === "1" ) !== undefined && notificationArray1[ 1 ].find( e => e.task === "2" ) !== undefined ).toBe( true );
+
+        expect( notificationArray1[ 0 ].length ).toBe( 2 ); //students amt
+        expect( notificationArray1[ 1 ].length ).toBe( 2 ); //homework amt
     } )
 } );

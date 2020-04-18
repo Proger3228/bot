@@ -140,7 +140,7 @@ describe( "getAllContributors", () => {
 
     it( "should return array of contributors", async () => {
         const result = await DataBase.getAllContributors().then( contributors => contributors.map( contributor => contributor.vkId ) );
-
+        w
         expect( Array.isArray( result ) ).toBe( true );
         expect( result.length ).toBe( 2 );
         console.log( result.includes( student2Id ), result.includes( student1Id ), !result.includes( student3Id ) )

@@ -60,7 +60,6 @@ const createTestData = async () => {
 };
 
 const findNotifiedStudents = ( students, notificationDate, maxRemindFrequency ) => {
-    console.log( students )
     return students
         .filter( ( { settings: sets, lastHomeworkCheck } ) => {
             if ( sets.notificationsEnabled ) { //Проверяет что уведомления включены

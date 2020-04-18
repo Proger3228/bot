@@ -244,6 +244,7 @@ class DataBase {
             return null
         }
     }; //
+    //TODO refactor returning data from array to object
     static async parseHomeworkToNotifications ( currentDateForTest ) {
         const classes = await _Class.find( {} );
         const notificationArray = []; //Массив массивов типа [[Массив вк айди учеников], [Массив дз]]
@@ -539,7 +540,7 @@ class DataBase {
         }
     }; //
 
-    /// Interactions
+    //* Interactions
     static async addStudentToClass ( StudentVkId, className ) {
         try {
             const Class = await this.getClassByName( className );
