@@ -114,6 +114,10 @@ describe( "getChanges", () => {
         await DataBase.addChanges( s.vkId, content1 );
         await DataBase.addChanges( s.vkId, content2 );
     } );
+    afterAll( async () => {
+        await Class.deleteMany( {} );
+        await Student.deleteMany( {} );
+    } )
 
     it( "should return array of changes for that class", async () => {
         const result = await DataBase.getChanges( className );

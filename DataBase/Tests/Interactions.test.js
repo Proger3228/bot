@@ -121,10 +121,8 @@ describe( "changeClass", () => {
         await Class.deleteMany( {} );
     } );
     afterEach( async () => {
-        const _class = await DataBase.getClassBy_Id( MockClass._id );
-        await _class.updateOne( { students: [ MockStudent._id ] } );
-        const student = await DataBase.getStudentBy_Id( MockStudent._id );
-        await student.updateOne( { class: MockClass._id } );
+        await MockClass.updateOne( { students: [ MockStudent._id ] } );
+        await MockStudent.updateOne( { class: MockClass._id } );
     } );
 
     it( "should return true if all is ok", async () => {
