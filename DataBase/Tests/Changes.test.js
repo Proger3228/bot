@@ -26,7 +26,15 @@ describe( "addChanges", () => {
         await Student.deleteMany( {} );
     } );
     afterEach( async () => {
-        await MockClass.updateOne( { changes: [] } );
+        await Class.deleteMany( {} );
+        await Student.deleteMany( {} );
+        const { Class: c, Student: s } = await createTestData();
+        const wcu = await DataBase.createStudent( getUniqueVkId() );
+        const wsc = await DataBase.createClass( getUniqueClassName() );
+        MockStudent = s;
+        MockClass = c;
+        StudentWithoutClass = wcu;
+        ClassWithoutStudent = wsc;
     } );
 
     it( "should return true if all is ok", async () => {
@@ -118,7 +126,14 @@ describe( "getChanges", () => {
         await Class.deleteMany( {} );
         await Student.deleteMany( {} );
     } )
-
+    afterEach( async () => {
+        await Student.deleteMany( {} );
+        await Class.deleteMany( {} );
+        const { Class: c, Student: s } = await createTestData();
+        className = c.name;
+        await DataBase.addChanges( s.vkId, content1 );
+        await DataBase.addChanges( s.vkId, content2 );
+    } )
     it( "should return array of changes for that class", async () => {
         const result = await DataBase.getChanges( className );
 

@@ -28,10 +28,11 @@ describe( "addStudentToClass", () => {
         await Class.deleteMany( {} );
     } );
     afterEach( async () => {
-        const _class = await DataBase.getClassBy_Id( MockClass._id );
-        await _class.updateOne( { students: [ MockStudent._id ] } );
-        const student = await DataBase.getStudentBy_Id( MockStudent._id );
-        await student.updateOne( { class: MockClass._id } );
+        await Class.deleteMany( {} );
+        await Student.deleteMany( {} );
+        const { Student: s, Class: c } = await createTestData();
+        MockClass = c;
+        MockStudent = s;
     } );
 
     it( "should return true if all is ok", async () => {
@@ -75,10 +76,11 @@ describe( "removeStudentFromClass", () => {
         await Class.deleteMany( {} );
     } );
     afterEach( async () => {
-        const _class = await DataBase.getClassBy_Id( MockClass._id );
-        await _class.updateOne( { students: [ MockStudent._id ] } );
-        const student = await DataBase.getStudentBy_Id( MockStudent._id );
-        await student.updateOne( { class: MockClass._id } );
+        await Class.deleteMany( {} );
+        await Student.deleteMany( {} );
+        const { Student: s, Class: c } = await createTestData();
+        MockClass = c;
+        MockStudent = s;
     } );
 
     it( "should return true if all is ok", async () => {
@@ -121,8 +123,11 @@ describe( "changeClass", () => {
         await Class.deleteMany( {} );
     } );
     afterEach( async () => {
-        await MockClass.updateOne( { students: [ MockStudent._id ] } );
-        await MockStudent.updateOne( { class: MockClass._id } );
+        await Class.deleteMany( {} );
+        await Student.deleteMany( {} );
+        const { Student: s, Class: c } = await createTestData();
+        MockClass = c;
+        MockStudent = s;
     } );
 
     it( "should return true if all is ok", async () => {

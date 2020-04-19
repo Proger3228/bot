@@ -166,4 +166,4 @@ describe( "createTestData", () => {
         expect( students.every( st => st !== null ) ).toBe( true );
         expect( foundClass ).not.toBeNull();
     } )
-} )
+} ) 

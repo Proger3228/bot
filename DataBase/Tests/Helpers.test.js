@@ -1,7 +1,16 @@
+const ClassModel = require( "../../Models/ClassModel" );
+
+const StudentModel = require( "../../Models/StudentModel" );
+
 const { getUniqueClassName, createTestData } = require( "../utils/functions" );
 const { DataBase } = require( "../DataBase" );
 
 describe( "populate", () => {
+    afterEach( () => {
+        ClassModel.deleteMany( {} );
+        StudentModel.deleteMany( {} );
+    } )
+
     it( "should populate class property on student", async () => {
         const { Student, Class } = await createTestData();
 
@@ -138,4 +147,4 @@ describe( "checkChangeContentValidity", () => {
         expect( result2 ).toBe( false );
         expect( result3 ).toBe( false );
     } )
-} )
+} ) 

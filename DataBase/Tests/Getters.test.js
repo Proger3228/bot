@@ -12,9 +12,11 @@ describe( "getStudentBy_Id", () => {
     beforeAll( async () => {
         MockStudent = await DataBase.createStudent( getUniqueVkId() );
     } );
-    afterAll( async () => {
-        await Student.deleteMany( {} );
-    } );
+    afterEach( async () => {
+        Student.deleteMany( {} );
+        Class.deleteMany( {} );
+        MockStudent = await DataBase.createStudent( getUniqueVkId() );
+    } )
 
     it( "should return right model", async () => {
         const student = await DataBase.getStudentBy_Id( MockStudent._id );
@@ -31,7 +33,7 @@ describe( "getStudentBy_Id", () => {
             .catch( err => expect( err ).toBeInstanceOf( TypeError ) )
     } );
     it( "should throw error if _id is not type of string", () => {
-        return DataBase.getStudentBy_Id( 1488 )
+        return DataBase.getStudentBy_Id( -1 )
             .catch( err => expect( err ).toBeInstanceOf( TypeError ) )
     } );
 } );
@@ -40,9 +42,11 @@ describe( "getClassBy_Id", () => {
     beforeAll( async () => {
         MockClass = await DataBase.createClass( getUniqueClassName() );
     } );
-    afterAll( async () => {
-        await Class.deleteMany( {} );
-    } );
+    afterEach( async () => {
+        Student.deleteMany( {} );
+        Class.deleteMany( {} );
+        MockClass = await DataBase.createClass( getUniqueClassName() );
+    } )
 
     it( "should return right model", async () => {
         const _class = await DataBase.getClassBy_Id( MockClass._id );
@@ -59,7 +63,7 @@ describe( "getClassBy_Id", () => {
             .catch( err => expect( err ).toBeInstanceOf( TypeError ) )
     } );
     it( "should throw error if _id is not type of string", () => {
-        return DataBase.getClassBy_Id( 1488 )
+        return DataBase.getClassBy_Id( -1 )
             .catch( err => expect( err ).toBeInstanceOf( TypeError ) )
     } );
 } );
@@ -70,9 +74,11 @@ describe( "getStudentByVkId", () => {
     beforeAll( async () => {
         MockStudent = await DataBase.createStudent( getUniqueVkId() );
     } );
-    afterAll( async () => {
-        await Student.deleteMany( {} );
-    } );
+    afterEach( async () => {
+        Student.deleteMany( {} );
+        Class.deleteMany( {} );
+        MockStudent = await DataBase.createStudent( getUniqueVkId() );
+    } )
 
     it( "should return right model", async () => {
         const student = await DataBase.getStudentByVkId( MockStudent.vkId );
@@ -80,7 +86,7 @@ describe( "getStudentByVkId", () => {
         return expect( student ).toEqual( MockStudent );
     } );
     it( "should null if vkId is not in collection", async () => {
-        const result = await DataBase.getStudentByVkId( 1488 );
+        const result = await DataBase.getStudentByVkId( -1 );
 
         return expect( result ).toBeNull();
     } );
@@ -98,9 +104,11 @@ describe( "getClassByName", () => {
     beforeAll( async () => {
         MockClass = await DataBase.createClass( getUniqueClassName() );
     } );
-    afterAll( async () => {
-        await Class.deleteMany( {} );
-    } );
+    afterEach( async () => {
+        Student.deleteMany( {} );
+        Class.deleteMany( {} );
+        MockClass = await DataBase.createClass( getUniqueClassName() );
+    } )
 
     it( "should return right model", async () => {
         const _class = await DataBase.getClassByName( MockClass.name );
@@ -117,7 +125,7 @@ describe( "getClassByName", () => {
             .catch( err => expect( err ).toBeInstanceOf( TypeError ) )
     } );
     it( "should throw error if name is not type of string", () => {
-        return DataBase.getClassByName( 1488 )
+        return DataBase.getClassByName( -1 )
             .catch( err => expect( err ).toBeInstanceOf( TypeError ) )
     } );
 } );
@@ -134,16 +142,15 @@ describe( "getAllContributors", () => {
         await Student1.updateOne( { role: Roles.contributor } );
         await Student2.updateOne( { role: Roles.contributor } );
     } );
-    afterAll( async () => {
+    afterEach( async () => {
         await Student.deleteMany( {} );
-    } );
-
+    } )
     it( "should return array of contributors", async () => {
         const result = await DataBase.getAllContributors().then( contributors => contributors.map( contributor => contributor.vkId ) );
-        w
+
         expect( Array.isArray( result ) ).toBe( true );
         expect( result.length ).toBe( 2 );
-        console.log( result.includes( student2Id ), result.includes( student1Id ), !result.includes( student3Id ) )
+
         expect( result.includes( student2Id ) && result.includes( student1Id ) && !result.includes( student3Id ) ).toBe( true );
     } );
 } );

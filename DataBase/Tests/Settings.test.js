@@ -13,7 +13,9 @@ describe( "changeSettings", () => {
         defaultSettings = MockStudent.settings;
     } );
     afterEach( async () => {
-        await MockStudent.updateOne( { settings: defaultSettings } )
+        Student.deleteMany( {} );
+        MockStudent = await DataBase.createStudent( getUniqueVkId() );
+        defaultSettings = MockStudent.settings;
     } );
 
     it( "should return true if all is ok", async () => {
@@ -52,4 +54,4 @@ describe( "changeSettings", () => {
         const updatedStudent = await DataBase.getStudentBy_Id( MockStudent._id );
         return expect( !Object.keys( updatedStudent.settings ).includes( "baz" ) ).toBe( true );
     } )
-} );
+} ); 

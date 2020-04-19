@@ -33,8 +33,11 @@ describe( "generateNewRoleUpCode", () => {
         await Student.deleteMany( {} );
     } );
     afterEach( async () => {
-        const _class = await DataBase.getClassBy_Id( MockClass._id );
-        await _class.updateOne( { roleUpCodes: [] } );
+        Class.deleteMany( {} );
+        Student.deleteMany( {} );
+        const { Student: s, Class: c } = await createTestData();
+        MockClass = c;
+        MockStudent = s;
     } );
 
     it( "should return valid uuid4 code", async () => {
@@ -84,13 +87,12 @@ describe( "removeRoleUpCode", () => {
         MockClass = c;
         MockStudent = s;
     } );
-    afterAll( async () => {
+    afterEach( async () => {
         await Student.deleteMany( {} );
         await Class.deleteMany( {} );
-    } );
-    afterEach( async () => {
-        const _class = await DataBase.getClassBy_Id( MockClass._id );
-        return _class.updateOne( { roleUpCodes: [] } );
+        const { Student: s, Class: c } = await createTestData();
+        MockClass = c;
+        MockStudent = s;
     } );
 
     it( "should return false if con`t find class by name", async () => {
@@ -137,13 +139,12 @@ describe( "checkCodeValidity", () => {
         MockClass = c;
         MockStudent = s;
     } );
-    afterAll( async () => {
+    afterEach( async () => {
         await Student.deleteMany( {} );
         await Class.deleteMany( {} );
-    } );
-    afterEach( async () => {
-        const _class = await DataBase.getClassBy_Id( MockClass._id );
-        await _class.updateOne( { roleUpCodes: [] } );
+        const { Student: s, Class: c } = await createTestData();
+        MockClass = c;
+        MockStudent = s;
     } );
 
     it( "should return false if code is not valid uuid4 code", async () => {
@@ -151,11 +152,25 @@ describe( "checkCodeValidity", () => {
 
         return expect( response ).toBe( false );
     } );
-    it( "should return true if code is in class` roleUp codes", async () => {
+    it( "should return true if code is in class` roleUp codes with passed className", async () => {
         const code = await DataBase.generateNewRoleUpCode( MockClass.name );
         const isValid = await DataBase.checkCodeValidity( MockClass.name, code );
 
         return expect( isValid ).toBe( true );
+    } );
+    it( "should return true if code is in class` roleUp codes with passed Document", async () => {
+        const code = await DataBase.generateNewRoleUpCode( MockClass.name );
+        const updatedClass = await DataBase.getClassBy_Id( MockClass._id );
+        const isValid = await DataBase.checkCodeValidity( updatedClass, code );
+
+        return expect( isValid ).toBe( true );
+    } );
+    it( "should throw error if passed Document but not a class", async () => {
+        const code = await DataBase.generateNewRoleUpCode( MockClass.name );
+
+        const f = async () => await DataBase.checkCodeValidity( MockStudent, code );
+
+        return expect( f ).toThrowError( TypeError( "className must be a string or Document" ) );
     } );
     it( "should not change saved codes", async () => {
         const c = await DataBase.getClassBy_Id( MockClass._id );
@@ -177,7 +192,7 @@ describe( "checkCodeValidity", () => {
 
         return expect( ( await DataBase.getClassBy_Id( MockClass._id ) ).roleUpCodes.length ).toBe( 1 );
     } );
-    it( "should return true if code isn`t in class` roleUp codes", async () => {
+    it( "should return false if code isn`t in class` roleUp codes", async () => {
         const code = uuid4();
 
         const response = await DataBase.checkCodeValidity( MockClass.name, code );
@@ -190,7 +205,6 @@ describe( "activateRoleUpCode", () => {
     let MockStudent;
     let MockClass;
     beforeAll( async () => {
-        mongoose.set( "debug", false );
         const { Student: s, Class: c } = await createTestData();
         MockClass = c;
         MockStudent = s;
@@ -200,10 +214,11 @@ describe( "activateRoleUpCode", () => {
         await Class.deleteMany( {} );
     } );
     afterEach( async () => {
-        const _class = await DataBase.getClassBy_Id( MockClass._id );
-        await _class.updateOne( { roleUpCodes: [] } );
-        const student = await DataBase.getStudentBy_Id( MockStudent._id );
-        await student.updateOne( { role: Roles.student, class: MockClass._id } );
+        Class.deleteMany( {} );
+        Student.deleteMany( {} );
+        const { Student: s, Class: c } = await createTestData();
+        MockClass = c;
+        MockStudent = s;
     } );
 
     it( "should throw error if code is invalid uuid4 code", async () => {
@@ -244,7 +259,6 @@ describe( "backStudentToInitialRole", () => {
     let MockStudent;
     let MockClass;
     beforeAll( async () => {
-        mongoose.set( "debug", false );
         const { Student: s, Class: c } = await createTestData();
         await s.updateOne( { role: Roles.contributor } );
         MockClass = c;
@@ -255,10 +269,12 @@ describe( "backStudentToInitialRole", () => {
         await Class.deleteMany( {} );
     } );
     afterEach( async () => {
-        const _class = await DataBase.getClassBy_Id( MockClass._id );
-        await _class.updateOne( { roleUpCodes: [] } );
-        const student = await DataBase.getStudentBy_Id( MockStudent._id );
-        await student.updateOne( { role: Roles.student, class: MockClass._id } );
+        Class.deleteMany( {} );
+        Student.deleteMany( {} );
+        const { Student: s, Class: c } = await createTestData();
+        await s.updateOne( { role: Roles.contributor } );
+        MockClass = c;
+        MockStudent = s;
     } );
     it( "should return true if all is ok", async () => {
         const result = await DataBase.backStudentToInitialRole( MockStudent.vkId );
@@ -267,7 +283,6 @@ describe( "backStudentToInitialRole", () => {
     } );
     it( "should change student`s role to STUDENT", async () => {
         await DataBase.backStudentToInitialRole( MockStudent.vkId );
-
         const updatedUser = await DataBase.getStudentByVkId( MockStudent.vkId );
 
         return expect( updatedUser.role ).toBe( Roles.student );
@@ -277,7 +292,7 @@ describe( "backStudentToInitialRole", () => {
             .catch( e => expect( e ).toBeInstanceOf( TypeError ) )
     } );
     it( "should return false if can`t find student with this vkId", async () => {
-        const result = await DataBase.backStudentToInitialRole( 1488 );
+        const result = await DataBase.backStudentToInitialRole( -1 );
 
         return expect( result ).toBe( false );
     } )

@@ -43,6 +43,7 @@ describe( "addHomework", () => {
     } );
     afterEach( async () => {
         await Class.deleteMany( {} );
+        await Student.deleteMany( {} );
         MockClass = await DataBase.createClass( getUniqueClassName() );
         await MockClass.updateOne( {
             schedule: [
@@ -60,7 +61,7 @@ describe( "addHomework", () => {
     it( "should return true if all is ok", async () => {
         const task = "Сделай дз уже блять сука блять";
         const lesson = "Обществознание";
-        const studentVkId = 1488;
+        const studentVkId = getUniqueVkId();
         const result = await DataBase.addHomework( MockClass.name, studentVkId, lesson, task );
 
         return expect( result ).toBe( true );
@@ -68,7 +69,7 @@ describe( "addHomework", () => {
     it( "should add one homework with right params", async () => {
         const task = "Сделай дз уже блять сука блять";
         const lesson = "Обществознание";
-        const studentVkId = 1488;
+        const studentVkId = getUniqueVkId();
         const initialLength = MockClass.homework.length;
 
         await DataBase.addHomework( MockClass.name, studentVkId, lesson, task, new Date( 2020, 2, 18 ) );
@@ -84,7 +85,7 @@ describe( "addHomework", () => {
     it( "should set homework's 'to' to given date if it passes", async () => {
         const task = "Сделай дз уже блять сука блять";
         const lesson = "Обществознание";
-        const studentVkId = 1488;
+        const studentVkId = getUniqueVkId();
 
         await DataBase.addHomework( MockClass.name, studentVkId, lesson, task, new Date( 2019, 9, 22 ) );
         const updatedClass = await DataBase.getClassBy_Id( MockClass._id );
@@ -104,15 +105,16 @@ describe( "getHomework", () => {
             ]
         } );
 
-        await DataBase.addHomework( MockClass.name, 1488, "Русский", "Пошалить )" );
-        await DataBase.addHomework( MockClass.name, 1488, "Математика", "Да" );
-        await DataBase.addHomework( MockClass.name, 1488, "Английский", "Нет", new Date( 2020, 0, 1 ) );
+        await DataBase.addHomework( MockClass.name, -1, "Русский", "Пошалить )" );
+        await DataBase.addHomework( MockClass.name, -1, "Математика", "Да" );
+        await DataBase.addHomework( MockClass.name, -1, "Английский", "Нет", new Date( 2020, 0, 1 ) );
     } );
     afterAll( async () => {
         await Class.deleteMany( {} )
     } );
     afterEach( async () => {
         await Class.deleteMany( {} );
+        await Student.deleteMany( {} );
         MockClass = await DataBase.createClass( getUniqueClassName() );
         await MockClass.updateOne( {
             schedule: [
@@ -120,9 +122,9 @@ describe( "getHomework", () => {
             ]
         } );
 
-        await DataBase.addHomework( MockClass.name, 1488, "Русский", "Пошалить )" );
-        await DataBase.addHomework( MockClass.name, 1488, "Математика", "Да" );
-        await DataBase.addHomework( MockClass.name, 1488, "Английский", "Нет", new Date( 2020, 0, 1 ) );
+        await DataBase.addHomework( MockClass.name, -1, "Русский", "Пошалить )" );
+        await DataBase.addHomework( MockClass.name, -1, "Математика", "Да" );
+        await DataBase.addHomework( MockClass.name, -1, "Английский", "Нет", new Date( 2020, 0, 1 ) );
     } )
     it( "should return list of homework", async () => {
         const result = await DataBase.getHomework( MockClass.name );
@@ -148,10 +150,6 @@ describe( "parseHomeworkToNotifications", () => {
         MockClass1 = await createTestData( studentVkIds1 );
         MockClass2 = await createTestData( studentVkIds2, false );
     } );
-    afterAll( async () => {
-        await Class.deleteMany( {} );
-        await Student.deleteMany( {} );
-    } );
     afterEach( async () => {
         await Class.deleteMany( {} )
         await Student.deleteMany( {} )
@@ -173,4 +171,4 @@ describe( "parseHomeworkToNotifications", () => {
         expect( notificationArray1[ 0 ].length ).toBe( 2 ); //students amt
         expect( notificationArray1[ 1 ].length ).toBe( 2 ); //homework amt
     } )
-} );
+} ); 

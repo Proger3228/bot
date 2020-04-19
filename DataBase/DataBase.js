@@ -40,6 +40,7 @@ class DataBase {
             }
         } catch ( e ) {
             if ( e instanceof TypeError ) throw e;
+            console.log( e )
             return null;
         }
     }; //Возвращает ученика по его id из vk
@@ -58,6 +59,7 @@ class DataBase {
             }
         } catch ( e ) {
             if ( e instanceof TypeError ) throw e;
+            console.log( e )
             return null;
         }
     }; //Возвращает ученика по его _id (это чисто для разработки (так быстрее ищется))
@@ -75,6 +77,7 @@ class DataBase {
             }
         } catch ( e ) {
             if ( e instanceof TypeError ) throw e;
+            console.log( e )
             return null;
         }
     }; //Возвращает класс по его имени
@@ -93,6 +96,7 @@ class DataBase {
             }
         } catch ( e ) {
             if ( e instanceof TypeError ) throw e;
+            console.log( e )
             return null;
         }
     }; //Возвращает ученика по его _id (это чисто для разработки (так быстрее ищется))
@@ -105,6 +109,7 @@ class DataBase {
                 return [];
             }
         } catch ( e ) {
+            console.log( e )
             return [];
         }
     }; //Возвращает список всех редакторов
@@ -134,7 +139,7 @@ class DataBase {
             }
         } catch ( e ) {
             if ( e instanceof TypeError ) throw e;
-            console.error( e );
+            console.log( e );
             return null;
         }
     }; //Создает и возвращает ученика
@@ -154,9 +159,8 @@ class DataBase {
                 throw new TypeError( "name parameter is required" )
             }
         } catch ( e ) {
-            console.log( e );
             if ( e instanceof TypeError ) throw e;
-            console.error( e );
+            console.log( e );
             return null;
         }
     }; //Создает и возвращает класс
@@ -452,30 +456,27 @@ class DataBase {
     static async activateCode ( vkId, code ) {
         try {
             if ( vkId !== undefined && typeof vkId === "number" ) {
-                if ( uuid4.valid( code ) ) {
-                    let Student = await this.populate( await this.getStudentByVkId( vkId ) );
-                    if ( Student ) {
-                        if ( Student.class ) {
-                            const isValid = Student.class.roleUpCodes.includes( code );
-                            if ( isValid ) {
-                                const removed = await this.removeRoleUpCode( Student.class.name, code );
-                                if ( removed ) {
-                                    await Student.updateOne( { role: Roles.contributor } );
-                                    return true;
-                                } else {
-                                    return false;
-                                }
+                let Student = await this.populate( await this.getStudentByVkId( vkId ) );
+                if ( Student ) {
+                    if ( Student.class ) {
+                        const isValid = await this.checkCodeValidity( Student.class, code );
+
+                        if ( isValid ) {
+                            const removed = await this.removeRoleUpCode( Student.class.name, code );
+                            if ( removed ) {
+                                await Student.updateOne( { role: Roles.contributor } );
+                                return true;
                             } else {
                                 return false;
                             }
                         } else {
-                            throw new TypeError( "Student must have class property to activate code" );
+                            return false;
                         }
                     } else {
-                        return false;
+                        throw new TypeError( "Student must have class property to activate code" );
                     }
                 } else {
-                    throw new TypeError( "Code should be valid uuid4 code" );
+                    return false;
                 }
             } else {
                 throw new TypeError( "VkId must be number" )
@@ -485,16 +486,35 @@ class DataBase {
             return false;
         }
     }; //Активирует код - делает ученика редактором и убирает код и списка кодов класса
-    static async checkCodeValidity ( className, code ) {
-        if ( uuid4.valid( code ) ) {
-            const Class = await this.getClassByName( className );
-            if ( Class && Class.roleUpCodes ) {
-                return Class.roleUpCodes.includes( code );
+    static async checkCodeValidity ( classOrClassName, code ) {
+        try {
+            if ( classOrClassName && typeof classOrClassName === "string" ) {
+                if ( uuid4.valid( code ) ) {
+                    const Class = await this.getClassByName( classOrClassName );
+                    if ( Class && Class.roleUpCodes ) {
+                        return Class.roleUpCodes.includes( code );
+                    } else {
+                        return false;
+                    }
+                } else {
+                    return false
+                }
             } else {
-                return false;
+                if ( classOrClassName instanceof mongoose.Document ) {
+                    if ( classOrClassName.roleUpCodes ) {
+                        if ( uuid4.valid( code ) ) {
+                            return classOrClassName.roleUpCodes.includes( code );
+                        } else {
+                            return false;
+                        }
+                    }
+                }
+                throw new TypeError( "className must be a string or Document" )
             }
-        } else {
-            return false
+        } catch ( e ) {
+            if ( e instanceof TypeError ) { throw e }
+            console.log( e )
+            return false;
         }
     }; //Проверяет валидность кода - Правильного ли он формата и есть ли он в списке кодов класса
     static async backStudentToInitialRole ( vkId ) {
@@ -502,7 +522,7 @@ class DataBase {
             if ( vkId !== undefined && typeof vkId === "number" ) {
                 const Student = await this.getStudentByVkId( vkId );
                 if ( Student ) {
-                    Student.role = Roles.student;
+                    await Student.updateOne( { role: Roles.student } )
                     return true;
                 } else {
                     return false;
@@ -536,6 +556,7 @@ class DataBase {
             }
         } catch ( e ) {
             if ( e instanceof TypeError ) throw e;
+            console.log( e )
             return false;
         }
     }; //
@@ -543,60 +564,84 @@ class DataBase {
     //* Interactions
     static async addStudentToClass ( StudentVkId, className ) {
         try {
-            const Class = await this.getClassByName( className );
-            const Student = await this.getStudentByVkId( StudentVkId );
-            if ( Class && Student ) {
-                await Class.updateOne( { students: [ ...Class.students, Student._id ] } );
-                await Student.updateOne( { class: Class._id } );
-                return true;
+            if ( StudentVkId !== undefined && typeof StudentVkId === "number" ) {
+                if ( newClassName && typeof newClassName === "string" ) {
+                    const Class = await this.getClassByName( className );
+                    const Student = await this.getStudentByVkId( StudentVkId );
+                    if ( Class && Student ) {
+                        await Class.updateOne( { students: [ ...Class.students, Student._id ] } );
+                        await Student.updateOne( { class: Class._id } );
+                        return true;
+                    } else {
+                        return false;
+                    }
+                } else {
+                    throw new TypeError( "newClassName must be string" )
+                }
             } else {
-                return false;
+                throw new TypeError( "Student vkId must be a number" )
             }
         } catch ( e ) {
+            if ( e instanceof TypeError ) { throw e };
             console.log( e );
             return false;
         }
     }; //Добавляет ученика в класс
     static async removeStudentFromClass ( StudentVkId ) {
         try {
-            const Student = await this.populate( await DataBase.getStudentByVkId( StudentVkId ) );
-            if ( Student ) {
-                const Class = Student.class;
-                if ( !Class ) return true;
-                await Class.updateOne( { students: Class.students.filter( ( { _id } ) => _id.toString() !== Student._id.toString() ) } );
-                await Student.updateOne( { class: null } );
-                return true;
+            if ( StudentVkId !== undefined && typeof StudentVkId === "number" ) {
+                const Student = await this.populate( await DataBase.getStudentByVkId( StudentVkId ) );
+                if ( Student ) {
+                    const Class = Student.class;
+                    if ( !Class ) return true;
+                    await Class.updateOne( { students: Class.students.filter( ( { _id } ) => _id.toString() !== Student._id.toString() ) } );
+                    await Student.updateOne( { class: null } );
+                    return true;
+                } else {
+                    return false;
+                }
             } else {
-                return false;
+                throw new TypeError( "StudentVkId must be a number" )
             }
         } catch ( e ) {
+            if ( e instanceof TypeError ) { throw e }
             console.error( e );
             return false;
         }
     }; //Удаляет ученика из класса
     static async changeClass ( StudentVkId, newClassName ) {
         try {
-            const Student = await this.populate( await this.getStudentByVkId( StudentVkId ) );
-            if ( Student.class.name !== newClassName ) {
-                const newClass = await this.getClassByName( newClassName );
-                if ( newClass && Student ) {
-                    const removed = await this.removeStudentFromClass( StudentVkId );
-                    if ( removed ) {
-                        await Student.updateOne( { class: newClass._id } );
-                        newClass.students.push( Student._id );
-                        await newClass.save();
-                        await Student.save();
-                        return true;
+            if ( StudentVkId !== undefined && typeof StudentVkId === "number" ) {
+                if ( newClassName && typeof newClassName === "string" ) {
+                    const Student = await this.populate( await this.getStudentByVkId( StudentVkId ) );
+                    if ( Student.class.name !== newClassName ) {
+                        const newClass = await this.getClassByName( newClassName );
+                        if ( newClass && Student ) {
+                            const removed = await this.removeStudentFromClass( StudentVkId );
+                            if ( removed ) {
+                                await Student.updateOne( { class: newClass._id } );
+                                newClass.students.push( Student._id );
+                                await newClass.save();
+                                await Student.save();
+                                return true;
+                            } else {
+                                return false;
+                            }
+                        } else {
+                            return false;
+                        }
                     } else {
                         return false;
                     }
                 } else {
-                    return false;
+                    throw new TypeError( "newClassName must be string" )
                 }
             } else {
-                return false;
+                throw new TypeError( "Student vkId must be a number" )
             }
         } catch ( e ) {
+            if ( e instanceof TypeError ) { throw e }
+            console.log( e );
             return false;
         }
     }; //Меняет класс ученика
@@ -620,6 +665,7 @@ class DataBase {
             }
         } catch ( e ) {
             if ( e instanceof TypeError ) { throw e; }
+            console.log( e )
             return null;
         }
     } //

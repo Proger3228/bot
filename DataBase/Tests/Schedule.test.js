@@ -11,8 +11,8 @@ describe( "setSchedule", () => {
         MockClass = await DataBase.createClass( getUniqueClassName() );
     } );
     afterEach( async () => {
-        const _class = await DataBase.getClassBy_Id( MockClass._id );
-        await _class.updateOne( { schedule: [] } );
+        Class.deleteMany( {} );
+        MockClass = await DataBase.createClass( getUniqueClassName() );
     } );
     afterAll( async () => {
         await Class.deleteMany( {} )
