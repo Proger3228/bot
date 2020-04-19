@@ -1,5 +1,5 @@
 const ClassModel = require( "../../Models/ClassModel.js" );
-
+const mongoose = require( "mongoose" );
 const { DataBase } = require( "../DataBase.js" );
 
 
@@ -42,11 +42,7 @@ const findNextLessonDate = ( nextLessonWeekDay, { currentDate = new Date(), mont
 
 const toObject = Document => JSON.parse( JSON.stringify( Document ) );
 const isObjectId = id => {
-    if ( typeof id === "object" && !Array.isArray( id ) && id !== null ) {
-        return id.toString() !== "[object Object]";
-    } else {
-        return false
-    }
+    return mongoose.Types.ObjectId.isValid( id );
 };
 
 const createTestData = async () => {

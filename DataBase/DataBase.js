@@ -25,7 +25,7 @@ const isObjectId = id => {
 
 //TODO Replace returns of false and null to errors or error codes
 class DataBase {
-    //* Getters
+    //! Getters
     static async getStudentByVkId ( vkId ) {
         try {
             if ( vkId !== undefined && typeof vkId === "number" ) {
@@ -114,7 +114,7 @@ class DataBase {
         }
     }; //Возвращает список всех редакторов
 
-    //* Creators
+    //! Creators
     static async createStudent ( vkId, class_id ) {
         try {
             if ( vkId !== undefined ) {
@@ -165,9 +165,9 @@ class DataBase {
         }
     }; //Создает и возвращает класс
 
-    //* Classes
+    //! Classes
 
-    //Homework
+    //* Homework
     static async addHomework ( className, studentVkId, lesson, task, expirationDate ) {
         try {
             if ( className && typeof className === "string" ) {
@@ -177,36 +177,32 @@ class DataBase {
                             const Class = await this.getClassByName( className );
                             if ( Class ) {
                                 if ( Class.schedule.flat().includes( lesson ) ) {
+                                    const newHomework = {
+                                        lesson,
+                                        task,
+                                        createdBy: studentVkId,
+                                        _id: new mongoose.Types.ObjectId()
+                                    };
                                     if ( expirationDate ) {
                                         if ( expirationDate instanceof Date && Date.now() - expirationDate.getTime() > 0 ) {
-                                            const newHomework = {
-                                                lesson,
-                                                task,
-                                                to: expirationDate,
-                                                createdBy: studentVkId
-                                            };
-                                            await Class.updateOne( { homework: [ ...Class.homework, newHomework ] } );
-                                            return true;
+                                            newHomework.to = expirationDate;
+                                            await Class.updateOne( { homework: Class.homework.concat( [ newHomework ] ) } );
+                                            return newHomework._id;
                                         } else {
                                             throw new TypeError( "Expiration date must be Date in the future" );
                                         }
                                     } else {
                                         const nextLessonWeekDay = findNextDayWithLesson( Class.schedule, lesson, ( new Date() ).getDay() || 7 ); // 1 - 7
                                         const nextLessonDate = findNextLessonDate( nextLessonWeekDay );
-                                        const newHomework = {
-                                            lesson,
-                                            task,
-                                            to: nextLessonDate,
-                                            createdBy: studentVkId
-                                        };
-                                        await Class.updateOne( { homework: [ ...Class.homework, newHomework ] } );
-                                        return true;
+                                        newHomework.to = nextLessonDate;
+                                        await Class.updateOne( { homework: Class.homework.concat( [ newHomework ] ) } );
+                                        return newHomework._id;
                                     }
                                 } else {
-                                    return false;
+                                    return null;
                                 }
                             } else {
-                                return false;
+                                return null;
                             }
                         } else {
                             throw new TypeError( "Task must be non empty string" );
@@ -223,9 +219,33 @@ class DataBase {
         } catch ( e ) {
             if ( e instanceof TypeError ) throw e;
             console.log( e );
-            return false;
+            return null;
         }
     }; //Добавляет жомашнее задание в класс
+    static async removeHomework ( className, homeworkId ) {
+        try {
+            if ( typeof homeworkId === "object" && isObjectId( homeworkId ) ) homeworkId = homeworkId.toString();
+            if ( className && typeof className === "string" ) {
+                if ( homeworkId && typeof homeworkId === "string" ) {
+                    const Class = await this.getClassByName( className );
+                    if ( Class ) {
+                        await ( await Class ).updateOne( { homework: Class.homework.filter( hw => hw._id !== homeworkId ) } );
+                        return true;
+                    } else {
+                        return false;
+                    }
+                } else {
+                    throw new TypeError( "homeworkId must be a string or objectId" )
+                }
+            } else {
+                throw new TypeError( "className must be a string" )
+            }
+        } catch ( e ) {
+            if ( e instanceof TypeError ) { throw e };
+            console.log( e );
+            return false;
+        }
+    }
     static async getHomework ( className, date ) {
         try {
             if ( className && typeof className === "string" ) {
@@ -379,9 +399,9 @@ class DataBase {
         }
     }; //
 
-    //* Students
+    //! Students
 
-    //Settings
+    //* Settings
     static async changeSettings ( vkId, diffObject ) {
         try {
             if ( vkId !== undefined && typeof vkId === "number" ) {
@@ -646,7 +666,7 @@ class DataBase {
         }
     }; //Меняет класс ученика
 
-    //* Helpers
+    //! Helpers
     static async populate ( document ) {
         try {
             if ( document instanceof mongoose.Document ) {
@@ -669,7 +689,6 @@ class DataBase {
             return null;
         }
     } //
-
     static validateChangeContent ( content ) {
         if ( content ) {
             if ( content !== null && content.toString() === "[object Object]" ) {
@@ -690,10 +709,9 @@ class DataBase {
         };
         return false;
     } //
-
     static validateAttachment ( attachment ) {
         return typeof attachment !== "string" || !/[a-z]+\d+_\d+_.+/.test( attachment );
-    }
+    } //
 }
 
 module.exports.DataBase = DataBase;

@@ -55,6 +55,10 @@ const classSchema = mongoose.Schema( {
                         validator: Number.isInteger,
                         message: "Created by must be integer means vk id of user created it"
                     }
+                },
+                _id: {
+                    type: mongoose.Schema.ObjectId,
+                    default: new mongoose.Types.ObjectId()
                 }
             }
         ],

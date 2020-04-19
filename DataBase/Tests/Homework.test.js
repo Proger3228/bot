@@ -53,18 +53,24 @@ describe( "addHomework", () => {
                 [ "Русский", "Английский", "Обществознание" ]
             ]
         } )
+        await DataBase.addHomework( MockClass.name, -1, "Математика", "task" );
+        MockClass = await DataBase.getClassBy_Id( MockClass._id );
     } );
     afterAll( async () => {
         await Class.deleteMany( {} )
     } );
 
-    it( "should return true if all is ok", async () => {
+    it( "should return homework id if all is ok", async () => {
         const task = "Сделай дз уже блять сука блять";
         const lesson = "Обществознание";
         const studentVkId = getUniqueVkId();
+
         const result = await DataBase.addHomework( MockClass.name, studentVkId, lesson, task );
 
-        return expect( result ).toBe( true );
+        const updatedHomework = await DataBase.getClassBy_Id( MockClass._id ).then( c => c.homework );
+        expect( typeof result ).toBe( "object" );
+        expect( updatedHomework.find( hw => hw._id.toString() === result.toString() ) );
+
     } );
     it( "should add one homework with right params", async () => {
         const task = "Сделай дз уже блять сука блять";
@@ -94,6 +100,33 @@ describe( "addHomework", () => {
         expect( homework.to ).toEqual( new Date( 2019, 9, 22 ) );
     } )
 } );
+
+describe( "removeHomework", () => {
+    let MockClass;
+    let homeworkId;
+    beforeAll( async () => {
+        MockClass = await DataBase.createClass( getUniqueClassName() );
+        await DataBase.setSchedule( MockClass.name, [ [ 0 ] ] );
+        homeworkId = await DataBase.addHomework( MockClass.name, -1, "Математика", "task" );
+    } )
+    afterEach( async () => {
+        await Class.deleteMany( {} );
+        MockClass = await DataBase.createClass( getUniqueClassName() );
+        await DataBase.setSchedule( MockClass.name, [ [ 0 ] ] );
+        homeworkId = await DataBase.addHomework( MockClass.name, -1, "Математика", "task" );
+    } )
+
+    it( "should return true if all is ok", async () => {
+        const result = await DataBase.removeHomework( MockClass.name, homeworkId );
+
+        expect( result ).toBe( true );
+    } )
+    it( "should return false if class is not exists", async () => {
+        const result = await DataBase.removeHomework( "not a name", homeworkId );
+
+        expect( result ).toBe( false );
+    } )
+} )
 
 describe( "getHomework", () => {
     let MockClass;
