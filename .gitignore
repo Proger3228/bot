@@ -5,5 +5,4 @@ node_modules
 .idea
 .vscode
 
-#config
-config
+package-lock.json

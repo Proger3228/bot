@@ -4,11 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "supervisor index -n -w .",
+    "start:dev": "supervisor index -n -w .",
     "start": "node index",
     "logs": "heroku logs --tail",
-    "debug": "node --inspect ./node_modules/jest/bin/jest.js -i"
+    "start:debug": "node --inspect ./node_modules/jest/bin/jest.js -i"
   },
   "author": "",
   "license": "ISC",

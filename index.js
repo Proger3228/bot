@@ -18,7 +18,7 @@ const
     botCommands = require( "./utils/botCommands.js" ),
     { DataBase } = require( "./DataBase/DataBase.js" );
 
-mongoose.connect( "mongodb+srv://Damir:CLv4QEJJrfZp4BC0@botdata-sp9px.mongodb.net/prod?retryWrites=true&w=majority", {
+mongoose.connect( config.get( "MONGODB_URI" ), {
     useNewUrlParser: true,
     useUnifiedTopology: true,
     useCreateIndex: true
@@ -26,10 +26,6 @@ mongoose.connect( "mongodb+srv://Damir:CLv4QEJJrfZp4BC0@botdata-sp9px.mongodb.ne
 
 const session = new Session();
 const stage = new Stage( ...Object.values( Scenes ) );
-
-( async () => {
-    console.log( ( await DataBase.getClassByName( "10Б" ) ) instanceof mongoose.Document )
-} )()
 
 bot.use( session.middleware() );
 bot.use( stage.middleware() );
