@@ -1,34 +1,44 @@
 const { Lessons } = require( "../DataBase/Models/utils" );
 const config = require( "config" );
 const Markup = require( "node-vk-bot-api/lib/markup" );
+const botCommands = require( "./botCommands" );
+const { checkHomework, adminPanel } = require( "./botCommands" );
+
+const userOptions = [
+    { label: botCommands.checkHomework, payload: checkHomework },
+    { label: botCommands.adminPanel, payload: adminPanel }
+]
+const adminOptions = [
+    { label: "Добавить редактора", payload: "addRedactor" },
+    { label: "Удалить редактора", payload: "removeRedactor" },
+    { label: "Список редакторов", payload: "redactorsList" },
+    { label: "Добавить класс", payload: "addClass" },
+    { label: "Список классов", payload: "classList" },
+    { label: "Настройки расписания", payload: "scheduleSettings" },
+];
 
 const renderLessons = () => {
     return Lessons.map( ( e, i ) => `${i}: ${e}` ).join( "\n" );
 };
 
 const formMessage = ( ...messageSections ) => {
-    return messageSections.join( "\n\n" );
-};
-
-const renderAdminKeyBoard = ( defaultKeyBoard ) => {
-    const adminButton = Markup.button( "Админ меню", "positive" );
-    return [ ...defaultKeyBoard, [ adminButton ] ]
+    return messageSections.join( "\n" );
 };
 
 const renderAdminMenu = () => {
-    const adminOptions = [
-        "Добавить редактора",
-        "Удалить редактора",
-        "Список редакторов",
-        "Добавить класс",
-        "Список классов",
-        "Настройки расписания",
-    ];
     return formMessage(
-        "Админское меню",
-        adminOptions.map( ( e, i ) => `${i + 1}: ${e}` ).join( "\n" ).concat( `\n0: Назад` )
+        "Админское меню\n",
+        ...adminOptions.map( ( { label }, i ) => `${i + 1}: ${label}` ),
+        "0: Назад"
     );
 };
+const renderAdminMenuKeyboard = () => {
+    const buttons = adminOptions.map( ( opt, i ) => Markup.button( i + 1, "default", { button: opt.payload } ) )
+
+    buttons.push( Markup.button( "Назад", "negative", { button: "back" } ) );
+
+    return Markup.keyboard( buttons, { columns: 3 } );
+}
 
 const isAdmin = ( userId ) => {
     return config.get( "admins" ).includes( userId );
@@ -42,11 +52,37 @@ const parseAttachments = ( attachments ) => {
     }
 };
 
+const createDefaultMenu = () => {
+    return formMessage(
+        "Меню:",
+        ...userOptions.map( ( { label }, i ) => `${i + 1}. ${label}` )
+    )
+}
+const createDefaultKeyboard = ( isAdmin ) => {
+    let buttons = [
+        Markup.button( botCommands.checkHomework, "primary" )
+    ];
+    if ( isAdmin ) {
+        buttons.push( Markup.button( botCommands.adminPanel, "positive", { button: "adminMenu" } ) );
+    }
+
+    return Markup.keyboard( buttons, { columns: 1 } );
+}
+
+const createBackKeyboard = ( existingButtons = [] ) => {
+    existingButtons.push( Markup.button( botCommands.back, "negative", { button: "back" } ) );
+
+    return Markup.keyboard( existingButtons );
+}
+
 module.exports = {
     renderLessons,
     formMessage,
     isAdmin,
-    renderAdminKeyBoard,
     renderAdminMenu,
-    parseAttachments
+    parseAttachments,
+    createDefaultKeyboard,
+    renderAdminMenuKeyboard,
+    createBackKeyboard,
+    createDefaultMenu
 };
