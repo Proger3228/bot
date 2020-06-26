@@ -7,7 +7,7 @@
     "start:dev": "supervisor index -n -w .",
     "start": "node index",
     "logs": "heroku logs --tail",
-    "start:debug": "node --inspect ./node_modules/jest/bin/jest.js -i"
+    "start:debug": "node --inspect index -i"
   },
   "author": "",
   "license": "ISC",

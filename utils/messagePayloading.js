@@ -2,28 +2,31 @@ const { Lessons, Roles } = require( "../DataBase/Models/utils" );
 const config = require( "config" );
 const Markup = require( "node-vk-bot-api/lib/markup" );
 const botCommands = require( "./botCommands" );
-const { checkHomework, adminPanel } = require( "./botCommands" );
 const { DataBase: DB } = require( "../DataBase/DataBase" );
 
 const DataBase = new DB( config.get( "MONGODB_URI" ) );
 
 const userOptions = [
-    { label: botCommands.checkHomework, payload: checkHomework },
-    { label: botCommands.adminPanel, payload: adminPanel }
+    { label: botCommands.checkHomework, payload: "checkHomework", color: "primary" },
+    { label: botCommands.checkSchedule, payload: "checkSchedule", color: "primary" },
+    { label: botCommands.studentPanel, payload: "studentPanel", color: "primary" },
+]
+const contributorOptions = [
+    { label: "Добавить дз", payload: "addHomework", color: "default" },
+    { label: "Добавить изменения в расписании", payload: "addChange", color: "default" },
+    { label: "Изменить расписание", payload: "changeSchedule", color: "default" },
 ]
 const adminOptions = [
-    { label: "Добавить редактора", payload: "addRedactor" },
-    { label: "Удалить редактора", payload: "removeRedactor" },
-    { label: "Список редакторов", payload: "redactorsList" },
-    { label: "Добавить класс", payload: "addClass" },
-    { label: "Список классов", payload: "classList" },
-    { label: "Настройки расписания", payload: "scheduleSettings" },
+    { label: "Добавить редактора", payload: "addRedactor", color: "default" },
+    { label: "Удалить редактора", payload: "removeRedactor", color: "default" },
+    { label: "Список редакторов", payload: "redactorsList", color: "default" },
+    { label: "Добавить класс", payload: "addClass", color: "default" },
+    { label: "Список классов", payload: "classList", color: "default" },
 ];
 
-const renderLessons = () => {
-    return Lessons.map( ( e, i ) => `${i}: ${e}` ).join( "\n" );
+const mapListToMessage = ( list ) => {
+    return list.map( ( e, i ) => `${i + 1}. ${e}` ).join( "\n" );
 };
-
 const formMessage = ( ...messageSections ) => {
     return messageSections.join( "\n" );
 };
@@ -31,12 +34,27 @@ const formMessage = ( ...messageSections ) => {
 const renderAdminMenu = () => {
     return formMessage(
         "Админское меню\n",
-        ...adminOptions.map( ( { label }, i ) => `${i + 1}: ${label}` ),
+        ...adminOptions.map( ( { label }, i ) => `${i + 1}. ${label}` ),
         "0: Назад"
     );
 };
 const renderAdminMenuKeyboard = () => {
     const buttons = adminOptions.map( ( opt, i ) => Markup.button( i + 1, "default", { button: opt.payload } ) )
+
+    buttons.push( Markup.button( "Назад", "negative", { button: "back" } ) );
+
+    return Markup.keyboard( buttons, { columns: 3 } );
+}
+
+const renderContributorMenu = () => {
+    return formMessage(
+        "Меню редактора\n",
+        ...contributorOptions.map( ( { label }, i ) => `${i + 1}. ${label}` ),
+        "0: Назад"
+    );
+};
+const renderContributorMenuKeyboard = () => {
+    const buttons = contributorOptions.map( ( opt, i ) => Markup.button( i + 1, "default", { button: opt.payload } ) )
 
     buttons.push( Markup.button( "Назад", "negative", { button: "back" } ) );
 
@@ -61,31 +79,41 @@ const createDefaultMenu = () => {
         ...userOptions.map( ( { label }, i ) => `${i + 1}. ${label}` )
     )
 }
-const createDefaultKeyboard = async ( isAdmin, ctx ) => {
-    let buttons = [
-        Markup.button( botCommands.checkHomework, "primary" )
-    ];
+const createDefaultKeyboard = async ( isAdmin, isContributor, ctx ) => {
+    try {
+        let buttons = userOptions.map( ( { label, payload, color } ) => Markup.button( label, color, { button: payload } ) );
 
-    if ( isAdmin === undefined ) {
-        ctx.session.isAdmin = await DataBase.getRole( ctx.message.user_id ) === Roles.admin;
-        isAdmin = ctx.session.isAdmin;
+        if ( isContributor === undefined && !isAdmin ) {
+            ctx.session.isAdmin = await DataBase.getRole( ctx.message.user_id ) === Roles.contributor;
+            isAdmin = ctx.session.isAdmin;
+        }
+        if ( isAdmin === undefined ) {
+            ctx.session.isAdmin = await DataBase.getRole( ctx.message.user_id ) === Roles.admin;
+            isAdmin = ctx.session.isAdmin;
+        }
+
+        if ( isContributor || isAdmin ) {
+            buttons.push( Markup.button( botCommands.contributorPanel, "primary", { button: "contributorPanel" } ) );
+        }
+        if ( isAdmin ) {
+            buttons.push( Markup.button( botCommands.adminPanel, "positive", { button: "adminMenu" } ) );
+        }
+
+        return Markup.keyboard( buttons, { columns: buttons.length > 2 ? 2 : 1 } );
+    } catch ( e ) {
+        console.error( e );
     }
-
-    if ( isAdmin ) {
-        buttons.push( Markup.button( botCommands.adminPanel, "positive", { button: "adminMenu" } ) );
-    }
-
-    return Markup.keyboard( buttons, { columns: 1 } );
 }
 
-const createBackKeyboard = ( existingButtons = [] ) => {
+const createBackKeyboard = ( existingButtons = [], columns = 4 ) => {
     existingButtons.push( Markup.button( botCommands.back, "negative", { button: "back" } ) );
 
-    return Markup.keyboard( existingButtons );
+    return Markup.keyboard( existingButtons, { columns } );
 }
 
+const lessonsList = mapListToMessage( Lessons );
+
 module.exports = {
-    renderLessons,
     formMessage,
     isAdmin,
     renderAdminMenu,
@@ -93,5 +121,9 @@ module.exports = {
     createDefaultKeyboard,
     renderAdminMenuKeyboard,
     createBackKeyboard,
-    createDefaultMenu
+    createDefaultMenu,
+    renderContributorMenuKeyboard,
+    renderContributorMenu,
+    mapListToMessage,
+    lessonsList
 };
