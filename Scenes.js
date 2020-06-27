@@ -134,36 +134,22 @@ module.exports.defaultScene = new Scene( "default",
 module.exports.checkSchedule = new Scene( "checkSchedule",
     async ( ctx ) => {
         try {
-            if ( ( ctx.session.isAdmin || ctx.session.isContributor ) ?? await DataBase.getRole( ctx.message.user_id ) !== Roles.student ) {
-                const Classes = await DataBase.getAllClasses();
-                if ( Classes.length > 0 ) {
-                    ctx.session.classes = Classes;
-
-                    const classesStr = mapListToMessage( Classes.map( ( { name } ) => name ) );
-
-                    const message = "Для какого класса вы хотите посмотреть расписание?\n \t" + classesStr;
-
-                    ctx.scene.next();
-                    const columns = Classes.length % 4 === 0
-                        ? 4
-                        : Classes.length % 3 === 0
-                            ? 3
-                            : Classes.length % 2 === 0
-                                ? 2
-                                : 4
-                    ctx.reply( message, null, createBackKeyboard( Classes.map( ( { name }, i ) => Markup.button( i + 1, "default", { button: name } ) ), columns ) );
-                } else {
-                    ctx.scene.enter( "default" );
-                    ctx.reply( "Не существует ни одного класса" )
-                };
+            if ( ( ( ctx.session.isAdmin || ctx.session.isContributor ) ?? await DataBase.getRole( ctx.message.user_id ) !== Roles.student ) && !ctx.session.Class ) {
+                ctx.session.nextScene = "checkSchedule";
+                ctx.session.step = 0;
+                ctx.scene.enter( "pickClass" );
             } else {
                 const Student = await DataBase.getStudentByVkId( ctx.session.userId || ctx.message.user_id );
 
                 if ( Student ) {
                     if ( Student.registered ) {
-                        const Class = await DataBase.getClassBy_Id( Student.class );
+                        let { Class } = ctx.session;
+                        if ( !Class ) {
+                            Class = await DataBase.getClassBy_Id( Student.class );
+                        }
 
                         const message = await getScheduleString( Class );
+                        ctx.session.Class = undefined;
 
                         if ( message.trim() === "" ) {
                             ctx.scene.enter( "default" );
@@ -186,45 +172,6 @@ module.exports.checkSchedule = new Scene( "checkSchedule",
             console.error( e );
             ctx.scene.enter( "error" );
         }
-    },
-    async ( ctx ) => {
-        if ( ctx.message.body === botCommands.back ) {
-            ctx.scene.enter( "default" );
-            return;
-        }
-
-        const { message: { body: classIndex } } = ctx;
-
-        let { classes } = ctx.session;
-
-        if ( !classes ) {
-            classes = await DataBase.getAllClasses();
-        }
-
-        let Class;
-
-        if ( isValidClassName( classIndex ) ) {
-            Class = classes.find( ( { name } ) => name === classIndex );
-        } else if ( !isNaN( classIndex ) ) {
-            Class = classes[ classIndex - 1 ];
-        }
-
-        if ( Class ) {
-            const message = await getScheduleString( Class );
-
-            if ( message.trim() === "" ) {
-                ctx.scene.enter( "default" );
-                ctx.reply( "Для данного класса пока что не существует расписания", null, await createDefaultKeyboard( ctx.session.isAdmin, ctx.session.isContributor, ctx ) );
-            }
-            else {
-                ctx.scene.enter( 'default' );
-                ctx.reply( message, null, await createDefaultKeyboard( ctx.session.isAdmin, ctx.session.isContributor, ctx ) );
-            }
-        } else {
-            ctx.reply( "Неверное имя класса" );
-        }
-
-        ctx.session.classes = undefined;
     }
 )
 //TODO
@@ -476,49 +423,30 @@ module.exports.contributorPanelScene = new Scene( 'contributorPanel',
     },
 );
 //TODO
-module.exports.addHomework = new Scene( "addHomework",
+module.exports.addHomeworkScene = new Scene( "addHomework",
 
 )
 //TODO
-module.exports.addChange = new Scene( "addChange",
+module.exports.addChangeScene = new Scene( "addChange",
 
 )
-module.exports.changeSchedule = new Scene( "changeSchedule",
+module.exports.changeScheduleScene = new Scene( "changeSchedule",
     async ( ctx ) => {
         ctx.session.isFullFill = false;
-        ctx.session.classes = undefined;
         ctx.session.changingDay = undefined;
-        ctx.session.Class = undefined;
 
         try {
-            if ( ctx.session.isAdmin ?? ctx.session.isContributor ?? await DataBase.getRole( ctx.message.user_id ) !== Roles.student ) {
-                const Classes = await DataBase.getAllClasses();
-                if ( Classes.length > 0 ) {
-                    ctx.session.classes = Classes;
-
-                    const classesStr = mapListToMessage( Classes.map( ( { name } ) => name ) );
-
-                    const message = "Для какого класса вы хотите посмотреть расписание?\n \t" + classesStr;
-
-                    ctx.scene.next();
-                    const columns = Classes.length % 4 === 0
-                        ? 4
-                        : Classes.length % 3 === 0
-                            ? 3
-                            : Classes.length % 2 === 0
-                                ? 2
-                                : 4
-                    ctx.reply( message, null, createBackKeyboard( Classes.map( ( { name }, i ) => Markup.button( i + 1, "default", { button: name } ) ), columns ) );
-                } else {
-                    ctx.scene.enter( "default" );
-                    ctx.reply( "Не существует ни одного класса" )
-                };
+            if ( ( ctx.session.isAdmin ?? ctx.session.isContributor ?? await DataBase.getRole( ctx.message.user_id ) !== Roles.student ) && !ctx.session.Class ) {
+                ctx.session.nextScene = "changeSchedule";
+                ctx.session.step = 0;
+                ctx.scene.enter( "pickClass" );
             } else {
                 const Student = await DataBase.getStudentByVkId( ctx.session.userId || ctx.message.user_id );
 
                 if ( Student ) {
                     if ( Student.registered ) {
-                        const Class = await DataBase.getClassBy_Id( Student.class );
+                        let { Class } = ctx.session;
+                        if ( !Class ) Class = await DataBase.getClassBy_Id( Student.class );
 
                         ctx.session.Class = Class;
                         ctx.session.schedule = Class.schedule;
@@ -531,7 +459,7 @@ module.exports.changeSchedule = new Scene( "changeSchedule",
 
                         const message = "Выберите день у которого хотите изменить расписание\n" + mapListToMessage( days ) + "\n0. Заполнить всё";
 
-                        ctx.scene.selectStep( 2 );
+                        ctx.scene.next();
                         ctx.reply( message, null, createBackKeyboard( buttons ) );
                     } else {
                         ctx.scene.enter( 'register' );
@@ -542,51 +470,6 @@ module.exports.changeSchedule = new Scene( "changeSchedule",
                     throw new Error();
                 }
             }
-        } catch ( e ) {
-            console.error( e );
-            ctx.scene.enter( "error" );
-        }
-    },
-    async ( ctx ) => {
-        try {
-            if ( ctx.message.body === botCommands.back ) {
-                ctx.scene.enter( "default" );
-                return;
-            }
-
-            const { message: { body: classIndex } } = ctx;
-
-            let { classes } = ctx.session;
-
-            if ( !classes ) {
-                classes = await DataBase.getAllClasses();
-            }
-
-            let Class;
-            if ( isValidClassName( classIndex ) ) {
-                Class = classes.find( ( { name } ) => name === classIndex );
-            } else if ( !isNaN( classIndex ) ) {
-                Class = classes[ classIndex - 1 ];
-            }
-
-            if ( Class ) {
-                ctx.session.Class = Class;
-                ctx.session.schedule = Class.schedule;
-
-                const days = Object.values( daysOfWeek );
-                const buttons = days.map( ( day, index ) => Markup.button( index + 1, "default", { button: day } ) );
-
-                buttons.push( Markup.button( "0", "primary" ) );
-
-                const message = "Выберите день у которого хотите изменить расписание\n" + mapListToMessage( days ) + "\n0. Заполнить всё";
-
-                ctx.scene.next();
-                ctx.reply( message, null, createBackKeyboard( buttons ) );
-            } else {
-                ctx.reply( "Неверное имя класса" );
-            }
-
-            ctx.session.classses = undefined;
         } catch ( e ) {
             console.error( e );
             ctx.scene.enter( "error" );
@@ -663,7 +546,7 @@ module.exports.changeSchedule = new Scene( "changeSchedule",
                         );
                     } else {
                         ctx.session.changingDay++;
-                        ctx.scene.selectStep( 3 );
+                        ctx.scene.selectStep( 2 );
                         ctx.reply( daysOfWeek[ ctx.session.changingDay - 1 ] + ":" );
                     }
                 } else {
@@ -681,6 +564,7 @@ module.exports.changeSchedule = new Scene( "changeSchedule",
         try {
             const { message: { body } } = ctx;
             const { schedule, Class } = ctx.session;
+            ctx.session.Class = undefined;
 
             if ( body.toLowerCase() === "да" ) {
                 if ( schedule && Class ) {
@@ -693,15 +577,79 @@ module.exports.changeSchedule = new Scene( "changeSchedule",
                 }
             } else {
                 ctx.reply( "Введите новое расписание" );
-                ctx.scene.selectStep( 3 );
+                ctx.scene.selectStep( 2 );
             }
         } catch ( e ) {
             console.error( e );
             ctx.scene.enter( "error" );
         }
-
-        ctx.session.classes = undefined;
     }
+)
+
+module.exports.pickClassScene = new Scene( "pickClass",
+    async ( ctx ) => {
+        try {
+            const Classes = await DataBase.getAllClasses();
+            if ( Classes.length > 0 ) {
+                ctx.session.classes = Classes;
+
+                const classesStr = mapListToMessage( Classes.map( ( { name } ) => name ) );
+
+                const message = "Для какого класса вы хотите посмотреть расписание?\n \t" + classesStr;
+
+                ctx.scene.next();
+                const columns = Classes.length % 4 === 0
+                    ? 4
+                    : Classes.length % 3 === 0
+                        ? 3
+                        : Classes.length % 2 === 0
+                            ? 2
+                            : 4
+                ctx.reply( message, null, createBackKeyboard( Classes.map( ( { name }, i ) => Markup.button( i + 1, "default", { button: name } ) ), columns ) );
+            } else {
+                ctx.scene.enter( "default" );
+                ctx.reply( "Не существует ни одного класса" )
+            };
+        } catch ( e ) {
+            console.error( e );
+            ctx.scene.enter( "error" );
+        }
+    },
+    async ( ctx ) => {
+        try {
+            if ( ctx.message.body === botCommands.back ) {
+                ctx.scene.enter( "default" );
+                return;
+            }
+
+            const { message: { body: classIndex } } = ctx;
+
+            let { classes } = ctx.session;
+
+            if ( !classes ) {
+                classes = await DataBase.getAllClasses();
+            }
+
+            let Class;
+            if ( isValidClassName( classIndex ) ) {
+                Class = classes.find( ( { name } ) => name === classIndex );
+            } else if ( !isNaN( classIndex ) ) {
+                Class = classes[ classIndex - 1 ];
+            }
+
+            if ( Class ) {
+                ctx.session.Class = Class;
+                ctx.scene.enter( ctx.session.nextScene, ctx.session.step );
+            } else {
+                ctx.reply( "Неверное имя класса" );
+            }
+
+            ctx.session.classses = undefined;
+        } catch ( e ) {
+            console.error( e );
+            ctx.scene.enter( "error" );
+        }
+    },
 )
 async function getScheduleString ( { schedule } ) {
     const message = schedule.map( ( lessons, i ) => {
