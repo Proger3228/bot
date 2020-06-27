@@ -146,11 +146,9 @@ const createConfirmKeyboard = ( existingButtons = [], columns = 4 ) => {
 
 const parseDateToStr = Date => `${Date.getDate()} ${monthsRP[ Date.getMonth() ]}`;
 const createContentDiscription = ( { to, lesson, text } ) => {
-    return `
-        ${lesson ? `${contentPropertyNames.lesson}: ${lesson}` : ""}\n
+    return `${lesson ? `${contentPropertyNames.lesson}: ${lesson}\n` : ""}
         ${contentPropertyNames.text}: ${text}\n
-        ${to ? `${contentPropertyNames.to}: ${parseDateToStr( to )}` : ""}\n
-    `
+        ${to ? `${contentPropertyNames.to}: ${parseDateToStr( to )}\n` : ""}`
 }
 
 const lessonsList = mapListToMessage( Lessons, 0 );

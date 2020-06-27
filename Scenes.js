@@ -542,7 +542,7 @@ module.exports.addHomeworkScene = new Scene( "addHomework",
 
                 ctx.scene.next();
                 ctx.reply(
-                    "Введите дату на которую задоно задание (в формате дд.ММ.ГГГГ)",
+                    "Введите дату на которую задано задание (в формате дд.ММ.ГГГГ)",
                     null,
                     createBackKeyboard( [ Markup.button( botCommands.onNextLesson, "positive" ) ], 1 )
                 );
@@ -584,10 +584,10 @@ module.exports.addHomeworkScene = new Scene( "addHomework",
                     month >= 0 &&
                     month < 12 &&
                     day > 0 &&
-                    day < maxDatesPerMonth[ month ] &&
+                    day < maxDatesPerMonth[ month - 1 ] &&
                     year >= ( new Date() ).getFullYear()
                 ) {
-                    const date = new Date( year, month, day );
+                    const date = new Date( year, month - 1, day );
 
                     if ( date.getTime() >= Date.now() ) {
                         ctx.session.newHomework.to = date;
@@ -609,7 +609,7 @@ module.exports.addHomeworkScene = new Scene( "addHomework",
                 ${createContentDiscription(
                     ctx.session.newHomework,
                 )}
-                `, null, createConfirmKeyboard() );
+                `, ctx.session.newHomework.attachments.map( ( { value } ) => value ), createConfirmKeyboard() );
             } else {
                 throw new Error();
             }
@@ -647,7 +647,161 @@ module.exports.addHomeworkScene = new Scene( "addHomework",
 )
 //TODO
 module.exports.addChangeScene = new Scene( "addChange",
+    async ( ctx ) => {
+        try {
+            if ( ctx.message.body.trim() === botCommands.back ) {
+                ctx.scene.enter( "default" );
+                return;
+            }
 
+            const needToPickClass = ctx.session.isAdmin ?? await DataBase.getRole( ctx.message.user_id ) === Roles.admin
+            if ( needToPickClass && !ctx.session.Class ) {
+                ctx.session.nextScene = "addChange";
+                ctx.scene.enter( "pickClass" );
+            } else {
+                const Student = await DataBase.getStudentByVkId( ctx.session.userId || ctx.message.user_id );
+
+                if ( Student ) {
+                    if ( Student.registered ) {
+                        if ( !ctx.session.Class ) ctx.session.Class = await DataBase.getClassBy_Id( Student.class );
+
+                        ctx.scene.next();
+                        ctx.reply( "Введите содержимое изменения (можно прикрепить фото)", null, createBackKeyboard() );
+                    } else {
+                        ctx.scene.enter( 'register' );
+                        ctx.reply( "Сначала вам необходимо зарегестрироваться, введите имя класса в котором вы учитесь" );
+                    }
+                } else {
+                    console.log( "user are not existing", ctx.session.userId );
+                    throw new Error();
+                }
+            }
+        } catch ( e ) {
+            console.error( e );
+            ctx.scene.enter( "error" );
+        }
+    },
+    async ( ctx ) => {
+        try {
+            const { message: { body = "", attachments = [] } } = ctx;
+
+            if ( body === botCommands.back ) {
+                const peekedClass = ( ctx.session.isAdmin || ctx.session.isContributor ) ?? await DataBase.getRole( ctx.message.user_id ) !== Roles.student;
+                //TODO только админы могут выбирать класс редакторы работают в пределах своего класса
+                if ( peekedClass ) {
+                    ctx.session.Class = undefined;
+                    ctx.scene.enter( "contributorPanel" );
+                } else {
+                    ctx.scene.enter( "default" );
+                }
+                return;
+            }
+
+            if ( attachments.every( att => att.type === "photo" ) ) {
+                const parsedAttachments = attachments.map( att => ( {
+                    value: parseAttachments( att ),
+                    url: findMaxPhotoResolution( att[ att.type ] ),
+                    album_id: att[ att.type ].album_id
+                } ) );
+
+                ctx.session.newChange = { text: body, attachments: parsedAttachments };
+
+                ctx.scene.next();
+                ctx.reply(
+                    "Введите дату изменения (в формате дд.ММ.ГГГГ)",
+                    null,
+                    createBackKeyboard( [ Markup.button( botCommands.onToday, "positive" ) ], 1 )
+                )
+            } else {
+                ctx.reply( "Отправлять можно только фото" );
+            }
+        } catch ( e ) {
+            console.error( e );
+            ctx.scene.enter( "error" );
+        }
+    },
+    async ( ctx ) => {
+        try {
+            const { message: { body } } = ctx;
+
+            if ( body === botCommands.back ) {
+                ctx.session.newChange.lesson = undefined;
+                ctx.scene.selectStep( 1 );
+                ctx.reply( "Введите содержимое изменения (можно прикрепить фото)", null, createBackKeyboard() );
+            }
+
+            if ( body === botCommands.onToday ) {
+                ctx.session.newChange.to = new Date();
+            } else if ( /[0-9]+\.[0-9]+\.[0-9]/.test( body ) ) {
+                const [ day, month, year ] = body.match( /([0-9]+)\.([0-9]+)\.([0-9]+)/ ).slice( 1 ).map( Number );
+                if (
+                    month >= 0 &&
+                    month < 12 &&
+                    day > 0 &&
+                    day < maxDatesPerMonth[ month - 1 ] &&
+                    year >= ( new Date() ).getFullYear()
+                ) {
+                    const date = new Date( year, month - 1, day );
+
+                    if ( date.getTime() >= Date.now() ) {
+                        ctx.session.newChange.to = date;
+                    } else {
+                        ctx.reply( "Дата не может быть в прошлом" );
+                    }
+                } else {
+                    ctx.reply( "Проверьте правильность введенной даты" );
+                }
+            } else {
+                ctx.reply( "Дата должна быть в формате дд.ММ.ГГГГ" );
+                return;
+            }
+
+            if ( ctx.session.newChange.to ) {
+                ctx.scene.next();
+                ctx.reply( `
+                Вы уверены что хотите создать такое изменение?
+                ${createContentDiscription(
+                    ctx.session.newChange,
+                )}
+                `, ctx.session.newChange.attachments.map( ( { value } ) => value ), createConfirmKeyboard() );
+            } else {
+                throw new Error();
+            }
+        } catch ( e ) {
+            console.error( e );
+            ctx.scene.enter( "error" );
+        }
+    },
+    async ( ctx ) => {
+        try {
+            const { message: { body: answer } } = ctx;
+
+            if ( answer.trim().toLowerCase() === botCommands.yes.toLowerCase() ) {
+                const { newChange: { to, text, attachments }, Class: { name: className } } = ctx.session;
+                ctx.session.Class = undefined;
+
+                const res = await DataBase.addChanges( className, { text, attachments }, to, false, ctx.message.user_id );
+
+                if ( res ) {
+                    ctx.scene.enter( "default" );
+                    ctx.reply( "Изменение в расписании успешно создано", null, await createDefaultKeyboard( ctx.session.isAdmin, ctx.session.isContributor, ctx ) );
+                } else {
+                    ctx.scene.enter( "default" );
+                    ctx.reply( "Простите произошла ошибка", null, await createDefaultKeyboard( ctx.session.isAdmin, ctx.session.isContributor, ctx ) );
+                }
+            } else {
+                ctx.reply(
+                    "Введите дату изменения (в формате дд.ММ.ГГГГ)",
+                    null,
+                    createBackKeyboard( [ Markup.button( botCommands.onToday, "positive" ) ], 1 )
+                )
+                ctx.selectStep( 3 );
+            }
+        } catch ( e ) {
+            console.error( e );
+            ctx.scene.enter( "error" )
+        }
+    }
 )
 module.exports.changeScheduleScene = new Scene( "changeSchedule",
     async ( ctx ) => {

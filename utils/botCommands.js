@@ -8,6 +8,7 @@ module.exports = {
     checkSchedule: "Посмотреть расписание",
     leaveEmpty: "Оставить пустым",
     onNextLesson: "На следующий урок",
+    onToday: "На сегодня",
     no: "Нет",
     yes: "Да"
 };
