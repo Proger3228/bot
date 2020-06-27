@@ -24,8 +24,8 @@ const adminOptions = [
     { label: "Список классов", payload: "classList", color: "default" },
 ];
 
-const mapListToMessage = ( list ) => {
-    return list.map( ( e, i ) => `${i + 1}. ${e}` ).join( "\n" );
+const mapListToMessage = ( list, startIndex = 1 ) => {
+    return list.map( ( e, i ) => `${i + startIndex}. ${e}` ).join( "\n" );
 };
 const formMessage = ( ...messageSections ) => {
     return messageSections.join( "\n" );
@@ -83,13 +83,17 @@ const createDefaultKeyboard = async ( isAdmin, isContributor, ctx ) => {
     try {
         let buttons = userOptions.map( ( { label, payload, color } ) => Markup.button( label, color, { button: payload } ) );
 
+        let role;
+        //TODO change is*Role* flags by role in session
         if ( isContributor === undefined && !isAdmin ) {
-            ctx.session.isAdmin = await DataBase.getRole( ctx.message.user_id ) === Roles.contributor;
-            isAdmin = ctx.session.isAdmin;
+            role = await DataBase.getRole( ctx.message.user_id ) === Roles.contributor;
+            ctx.session.isContributor = role;
+            isContributor = role;
         }
         if ( isAdmin === undefined ) {
-            ctx.session.isAdmin = await DataBase.getRole( ctx.message.user_id ) === Roles.admin;
-            isAdmin = ctx.session.isAdmin;
+            role = role || await DataBase.getRole( ctx.message.user_id ) === Roles.admin;
+            ctx.session.isAdmin = role;
+            isAdmin = role;
         }
 
         if ( isContributor || isAdmin ) {
@@ -111,7 +115,7 @@ const createBackKeyboard = ( existingButtons = [], columns = 4 ) => {
     return Markup.keyboard( existingButtons, { columns } );
 }
 
-const lessonsList = mapListToMessage( Lessons );
+const lessonsList = mapListToMessage( Lessons, 0 );
 
 module.exports = {
     formMessage,

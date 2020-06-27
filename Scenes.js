@@ -16,9 +16,10 @@ const
     } = require( "./utils/messagePayloading.js" ),
     { DataBase: DB } = require( "./DataBase/DataBase.js" );
 const botCommands = require( "./utils/botCommands.js" );
-const { Roles, DaysOfWeek, daysOfWeek, isValidClassName, Lessons } = require( "./DataBase/Models/utils.js" );
+const { Roles, isValidClassName, Lessons, daysOfWeek } = require( "./DataBase/Models/utils.js" );
 const VK_API = require( "./DataBase/VkAPI/VK_API.js" );
 const Markup = require( "node-vk-bot-api/lib/markup" );
+const c = require( "config" );
 const DataBase = new DB( config.get( "MONGODB_URI" ) );
 const vk = new VK_API( config.get( "VK_API_KEY" ), config.get( "GROUP_ID" ), config.get( "ALBUM_ID" ) );
 
@@ -133,7 +134,7 @@ module.exports.defaultScene = new Scene( "default",
 module.exports.checkSchedule = new Scene( "checkSchedule",
     async ( ctx ) => {
         try {
-            if ( ctx.session.isAdmin ?? ctx.session.isContributor ?? await DataBase.getRole( ctx.message.user_id ) !== Roles.student ) {
+            if ( ( ctx.session.isAdmin || ctx.session.isContributor ) ?? await DataBase.getRole( ctx.message.user_id ) !== Roles.student ) {
                 const Classes = await DataBase.getAllClasses();
                 if ( Classes.length > 0 ) {
                     ctx.session.classes = Classes;
@@ -162,7 +163,7 @@ module.exports.checkSchedule = new Scene( "checkSchedule",
                     if ( Student.registered ) {
                         const Class = await DataBase.getClassBy_Id( Student.class );
 
-                        const message = await getScheduleString( Class, ctx );
+                        const message = await getScheduleString( Class );
 
                         if ( message.trim() === "" ) {
                             ctx.scene.enter( "default" );
@@ -209,7 +210,7 @@ module.exports.checkSchedule = new Scene( "checkSchedule",
         }
 
         if ( Class ) {
-            const message = await getScheduleString( Class, ctx );
+            const message = await getScheduleString( Class );
 
             if ( message.trim() === "" ) {
                 ctx.scene.enter( "default" );
@@ -223,7 +224,7 @@ module.exports.checkSchedule = new Scene( "checkSchedule",
             ctx.reply( "Неверное имя класса" );
         }
 
-        ctx.session.classses = undefined;
+        ctx.session.classes = undefined;
     }
 )
 //TODO
@@ -484,6 +485,11 @@ module.exports.addChange = new Scene( "addChange",
 )
 module.exports.changeSchedule = new Scene( "changeSchedule",
     async ( ctx ) => {
+        ctx.session.isFullFill = false;
+        ctx.session.classes = undefined;
+        ctx.session.changingDay = undefined;
+        ctx.session.Class = undefined;
+
         try {
             if ( ctx.session.isAdmin ?? ctx.session.isContributor ?? await DataBase.getRole( ctx.message.user_id ) !== Roles.student ) {
                 const Classes = await DataBase.getAllClasses();
@@ -513,8 +519,20 @@ module.exports.changeSchedule = new Scene( "changeSchedule",
                 if ( Student ) {
                     if ( Student.registered ) {
                         const Class = await DataBase.getClassBy_Id( Student.class );
-                        //TODO add function
 
+                        ctx.session.Class = Class;
+                        ctx.session.schedule = Class.schedule;
+
+
+                        const days = Object.values( daysOfWeek );
+                        const buttons = days.map( ( day, index ) => Markup.button( index + 1, "default", { button: day } ) );
+
+                        buttons.push( Markup.button( "0", "primary" ) );
+
+                        const message = "Выберите день у которого хотите изменить расписание\n" + mapListToMessage( days ) + "\n0. Заполнить всё";
+
+                        ctx.scene.selectStep( 2 );
+                        ctx.reply( message, null, createBackKeyboard( buttons ) );
                     } else {
                         ctx.scene.enter( 'register' );
                         ctx.reply( "Сначала вам необходимо зарегестрироваться, введите имя класса в котором вы учитесь" );
@@ -545,7 +563,6 @@ module.exports.changeSchedule = new Scene( "changeSchedule",
             }
 
             let Class;
-
             if ( isValidClassName( classIndex ) ) {
                 Class = classes.find( ( { name } ) => name === classIndex );
             } else if ( !isNaN( classIndex ) ) {
@@ -579,14 +596,28 @@ module.exports.changeSchedule = new Scene( "changeSchedule",
         try {
             const { message: { body } } = ctx;
 
-            if ( body === "Заполнить всё" || body === "0" ) {
+            if ( body.toLowerCase === botCommands.back ) {
+                ctx.scene.enter( "default" );
+            }
+
+            if ( [ "заполнить всё", "все", "0", "всё", "заполнить всё" ].includes( body.toLowerCase() ) ) {
+                ctx.session.isFullFill = true;
+                ctx.session.changingDay = 1;
+                const message = `
+                    Введите новое расписание цифрами через запятую или пробел, выбирая из этих предметов\n
+                    ${lessonsList}\n 
+                    Сначала понедельник:
+                `;
+
+                ctx.scene.next();
+                ctx.reply( message, null, createBackKeyboard( [ Markup.button( botCommands.leaveEmpty, "primary" ) ], 1 ) );
             } else if ( ( !isNaN( +body ) && +body >= 1 && +body <= 7 ) || Object.values( daysOfWeek ).includes( body ) ) {
                 ctx.session.changingDay = +body;
 
                 const message = `Введите новое расписание цифрами через запятую или пробел, выбирая из этих предметов\n ${lessonsList}`;
 
                 ctx.scene.next();
-                ctx.reply( message, null, createBackKeyboard() );
+                ctx.reply( message, null, createBackKeyboard( [ Markup.button( botCommands.leaveEmpty, "primary" ) ], 1 ) );
             } else {
                 ctx.reply( "Неверно введен день" );
             }
@@ -598,21 +629,43 @@ module.exports.changeSchedule = new Scene( "changeSchedule",
     ( ctx ) => {
         try {
             let { message: { body } } = ctx;
+
+            if ( body === botCommands.leaveEmpty ) {
+                body = "";
+            }
+
             body = body.replace( /,/g, " " );
 
-            let indexes = body.split( " " ).filter( Boolean );
+            let indexes = body.trim().split( " " ).filter( Boolean );
             if ( indexes.every( index => !isNaN( +index ) ) ) {
-                indexes = indexes.map( i => +i + 1 );
-                if ( indexes.every( index => index > 0 && index < Lessons.length - 1 ) ) {
+                indexes = indexes.map( i => +i );
+                if ( indexes.every( index => index >= 0 && index < Lessons.length ) ) {
                     const newLessons = indexes.map( i => Lessons[ i ] );
                     ctx.session.schedule[ ctx.session.changingDay - 1 ] = newLessons;
 
-                    ctx.scene.next();
-                    ctx.reply(
-                        "Вы уверенны что хотите изменить расписание на это:\n" + mapListToMessage( newLessons ),
-                        null,
-                        Markup.keyboard( [ Markup.button( "Нет", "negative" ), Markup.button( "Да", "positive" ) ] )
-                    );
+                    if ( !ctx.session.isFullFill || ctx.session.changingDay === Object.keys( daysOfWeek ).length ) {
+                        ctx.scene.next();
+
+                        const newScheduleStr = ctx.session.isFullFill
+                            ? ctx.session.schedule.map( ( lessons, i ) => `${daysOfWeek[ i ]}:\n ${mapListToMessage( lessons )}` )
+                            : mapListToMessage( newLessons );
+                        const isEmpty = ctx.session.isFullFill
+                            ? ctx.session.schedule.every( lessons => lessons.length === 0 )
+                            : newLessons.length === 0;
+                        const message = !isEmpty
+                            ? "Вы уверены, что хотите изменить расписание на это:\n" + newScheduleStr + "?"
+                            : "Вы уверены, что хотите оставить расписание пустым?";
+
+                        ctx.reply(
+                            message,
+                            null,
+                            Markup.keyboard( [ Markup.button( "Нет", "negative" ), Markup.button( "Да", "positive" ) ] )
+                        );
+                    } else {
+                        ctx.session.changingDay++;
+                        ctx.scene.selectStep( 3 );
+                        ctx.reply( daysOfWeek[ ctx.session.changingDay - 1 ] + ":" );
+                    }
                 } else {
                     ctx.reply( "Проверьте правильность введенного расписания" );
                 }
@@ -633,23 +686,24 @@ module.exports.changeSchedule = new Scene( "changeSchedule",
                 if ( schedule && Class ) {
                     await Class.updateOne( { schedule } );
                     ctx.scene.enter( "default" );
-                    ctx.reply( "Расписание успешно обновлено" );
+                    ctx.reply( "Расписание успешно обновлено", null, await createDefaultKeyboard( true, false ) );
                 } else {
                     console.log( "Schedule is ", schedule, "Class is ", Class );
                     throw new Error();
                 }
             } else {
-                ctx.scene.selectStep( 4 );
+                ctx.reply( "Введите новое расписание" );
+                ctx.scene.selectStep( 3 );
             }
         } catch ( e ) {
             console.error( e );
             ctx.scene.enter( "error" );
         }
+
+        ctx.session.classes = undefined;
     }
 )
-async function getScheduleString ( Class ) {
-    const { schedule } = Class;
-
+async function getScheduleString ( { schedule } ) {
     const message = schedule.map( ( lessons, i ) => {
         const dayName = daysOfWeek[ i ];
 

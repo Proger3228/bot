@@ -5,5 +5,6 @@ module.exports = {
     toStart: "В начало",
     back: "Назад",
     checkHomework: "Посмотреть дз",
-    checkSchedule: "Посмотреть расписание"
+    checkSchedule: "Посмотреть расписание",
+    leaveEmpty: "Оставить пустым",
 };
