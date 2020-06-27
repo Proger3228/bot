@@ -7,4 +7,7 @@ module.exports = {
     checkHomework: "Посмотреть дз",
     checkSchedule: "Посмотреть расписание",
     leaveEmpty: "Оставить пустым",
+    onNextLesson: "На следующий урок",
+    no: "Нет",
+    yes: "Да"
 };

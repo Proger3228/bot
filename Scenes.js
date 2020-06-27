@@ -11,17 +11,44 @@ const
         createDefaultKeyboard,
         renderContributorMenu,
         renderContributorMenuKeyboard,
-        mapListToMessage,
         lessonsList,
+        parseAttachments,
+        mapListToMessage,
+        formMessage,
+        createContentDiscription,
+        createConfirmKeyboard,
     } = require( "./utils/messagePayloading.js" ),
-    { DataBase: DB } = require( "./DataBase/DataBase.js" );
-const botCommands = require( "./utils/botCommands.js" );
-const { Roles, isValidClassName, Lessons, daysOfWeek } = require( "./DataBase/Models/utils.js" );
-const VK_API = require( "./DataBase/VkAPI/VK_API.js" );
-const Markup = require( "node-vk-bot-api/lib/markup" );
-const c = require( "config" );
-const DataBase = new DB( config.get( "MONGODB_URI" ) );
-const vk = new VK_API( config.get( "VK_API_KEY" ), config.get( "GROUP_ID" ), config.get( "ALBUM_ID" ) );
+    { DataBase: DB } = require( "./DataBase/DataBase.js" ),
+    { findNextLessonDate, findNextDayWithLesson } = require( "./DataBase/utils/functions" ),
+    botCommands = require( "./utils/botCommands.js" ),
+    { Roles, isValidClassName, Lessons, daysOfWeek } = require( "./DataBase/Models/utils.js" ),
+    VK_API = require( "./DataBase/VkAPI/VK_API.js" ),
+    Markup = require( "node-vk-bot-api/lib/markup" ),
+    c = require( "config" ),
+    DataBase = new DB( config.get( "MONGODB_URI" ) ),
+    vk = new VK_API( config.get( "VK_API_KEY" ), config.get( "GROUP_ID" ), config.get( "ALBUM_ID" ) );
+
+const maxDatesPerMonth = [
+    31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
+];
+
+const findMaxPhotoResolution = ( photo ) => {
+    let maxR = 0;
+    let url = "";
+
+    for ( let i in photo ) {
+        if ( photo.hasOwnProperty( i ) && /photo_\d/.test( i ) ) {
+            const [ _, res ] = i.match( /photo_(\d)/ );
+
+            if ( +res > maxR ) {
+                maxR = +res;
+                url = photo[ i ];
+            }
+        }
+    }
+
+    return url;
+}
 
 module.exports.errorScene = new Scene( "error",
     async ( ctx ) => {
@@ -134,7 +161,8 @@ module.exports.defaultScene = new Scene( "default",
 module.exports.checkSchedule = new Scene( "checkSchedule",
     async ( ctx ) => {
         try {
-            if ( ( ( ctx.session.isAdmin || ctx.session.isContributor ) ?? await DataBase.getRole( ctx.message.user_id ) !== Roles.student ) && !ctx.session.Class ) {
+            const needToPickClass = ctx.session.isAdmin ?? await DataBase.getRole( ctx.message.user_id ) === Roles.admin
+            if ( needToPickClass && !ctx.session.Class ) {
                 ctx.session.nextScene = "checkSchedule";
                 ctx.session.step = 0;
                 ctx.scene.enter( "pickClass" );
@@ -424,7 +452,198 @@ module.exports.contributorPanelScene = new Scene( 'contributorPanel',
 );
 //TODO
 module.exports.addHomeworkScene = new Scene( "addHomework",
+    async ( ctx ) => {
+        try {
+            if ( ctx.message.body.trim() === botCommands.back ) {
+                ctx.scene.enter( "default" );
+                return;
+            }
 
+            const needToPickClass = ctx.session.isAdmin ?? await DataBase.getRole( ctx.message.user_id ) === Roles.admin
+            if ( needToPickClass && !ctx.session.Class ) {
+                ctx.session.nextScene = "addHomework";
+                ctx.scene.enter( "pickClass" );
+            } else {
+                const Student = await DataBase.getStudentByVkId( ctx.session.userId || ctx.message.user_id );
+
+                if ( Student ) {
+                    if ( Student.registered ) {
+                        if ( !ctx.session.Class ) ctx.session.Class = await DataBase.getClassBy_Id( Student.class );
+
+                        ctx.scene.next();
+                        ctx.reply( "Введите содержимое дз (можно прикрепить фото)", null, createBackKeyboard() );
+                    } else {
+                        ctx.scene.enter( 'register' );
+                        ctx.reply( "Сначала вам необходимо зарегестрироваться, введите имя класса в котором вы учитесь" );
+                    }
+                } else {
+                    console.log( "user are not existing", ctx.session.userId );
+                    throw new Error();
+                }
+            }
+        } catch ( e ) {
+            console.error( e );
+            ctx.scene.enter( "error" );
+        }
+    },
+    async ( ctx ) => {
+        try {
+            const { message: { body = "", attachments = [] } } = ctx;
+
+            if ( body === botCommands.back ) {
+                const peekedClass = ( ctx.session.isAdmin || ctx.session.isContributor ) ?? await DataBase.getRole( ctx.message.user_id ) !== Roles.student;
+                //TODO только админы могут выбирать класс редакторы работают в пределах своего класса
+                if ( peekedClass ) {
+                    ctx.session.Class = undefined;
+                    ctx.scene.enter( "contributorPanel" );
+                } else {
+                    ctx.scene.enter( "default" );
+                }
+                return;
+            }
+
+            if ( attachments.every( att => att.type === "photo" ) ) {
+                const parsedAttachments = attachments.map( att => ( {
+                    value: parseAttachments( att ),
+                    url: findMaxPhotoResolution( att[ att.type ] ),
+                    album_id: att[ att.type ].album_id
+                } ) );
+
+                ctx.session.newHomework = { text: body, attachments: parsedAttachments };
+
+                const possibleLessons = ctx.session.Class.schedule.flat().filter( ( l, i, arr ) => i === arr.lastIndexOf( l ) ); //Pick onlu unique lessons
+                ctx.session.possibleLessons = possibleLessons;
+
+                ctx.scene.next();
+                ctx.reply( "Выбирите урок:\n" + mapListToMessage( possibleLessons ) );
+            } else {
+                ctx.reply( "Отправлять можно только фото" );
+            }
+        } catch ( e ) {
+            console.error( e );
+            ctx.scene.enter( "error" );
+        }
+    },
+    ( ctx ) => {
+        try {
+            let { message: { body } } = ctx;
+
+            if ( body === botCommands.back ) {
+                ctx.session.newHomework.attachment = undefined;
+                ctx.session.newHomework.text = undefined;
+                ctx.scene.selectStep( 1 );
+                ctx.reply( "Введите содержимое дз (можно прикрепить фото)", null, createBackKeyboard() );
+            }
+
+            if ( !isNaN( +body ) || ctx.session.possibleLessons.includes( body ) ) {
+                const lesson = ctx.session.possibleLessons[ +body - 1 ] || body;
+
+                ctx.session.newHomework.lesson = lesson;
+
+                ctx.scene.next();
+                ctx.reply(
+                    "Введите дату на которую задоно задание (в формате дд.ММ.ГГГГ)",
+                    null,
+                    createBackKeyboard( [ Markup.button( botCommands.onNextLesson, "positive" ) ], 1 )
+                );
+            } else {
+                if ( Lessons.includes( body ) ) {
+                    ctx.reply( "Вы можете вводить только доступные уроки" );
+                } else {
+                    ctx.reply( "Вы должны ввести цифру или название урока" );
+                }
+            }
+        } catch ( e ) {
+            console.log( e );
+            ctx.scene.enter( "error" );
+        }
+
+    },
+    async ( ctx ) => {
+        try {
+            const { message: { body } } = ctx;
+
+            if ( body === botCommands.back ) {
+                ctx.session.newHomework.lesson = undefined;
+                ctx.scene.selectStep( 2 );
+                ctx.reply( "Выбирите урок:\n" + mapListToMessage( ctx.session.possibleLessons, 1 ), null, createBackKeyboard() );
+            }
+
+            if ( body === botCommands.onNextLesson ) {
+                const datePrediction =
+                    findNextLessonDate( findNextDayWithLesson(
+                        ctx.session.Class.schedule,
+                        ctx.session.newHomework.lesson,
+                        ( new Date() ).getDay() || 7 )
+                    );
+
+                ctx.session.newHomework.to = datePrediction;
+            } else if ( /[0-9]+\.[0-9]+\.[0-9]/.test( body ) ) {
+                const [ day, month, year ] = body.match( /([0-9]+)\.([0-9]+)\.([0-9]+)/ ).slice( 1 ).map( Number );
+                if (
+                    month >= 0 &&
+                    month < 12 &&
+                    day > 0 &&
+                    day < maxDatesPerMonth[ month ] &&
+                    year >= ( new Date() ).getFullYear()
+                ) {
+                    const date = new Date( year, month, day );
+
+                    if ( date.getTime() >= Date.now() ) {
+                        ctx.session.newHomework.to = date;
+                    } else {
+                        ctx.reply( "Дата не может быть в прошлом" );
+                    }
+                } else {
+                    ctx.reply( "Проверьте правильность введенной даты" );
+                }
+            } else {
+                ctx.reply( "Дата должна быть в формате дд.ММ.ГГГГ" );
+                return;
+            }
+
+            if ( ctx.session.newHomework.to ) {
+                ctx.scene.next();
+                ctx.reply( `
+                Вы уверены что хотите создать такое задание?
+                ${createContentDiscription(
+                    ctx.session.newHomework,
+                )}
+                `, null, createConfirmKeyboard() );
+            } else {
+                throw new Error();
+            }
+        } catch ( e ) {
+            console.error( e );
+            ctx.scene.enter( "error" );
+        }
+    },
+    async ( ctx ) => {
+        try {
+            const { message: { body: answer } } = ctx;
+
+            if ( answer.trim().toLowerCase() === botCommands.yes.toLowerCase() ) {
+                const { newHomework: { to, lesson, text, attachments }, Class: { name: className } } = ctx.session;
+                ctx.session.Class = undefined;
+
+                const res = await DataBase.addHomework( className, lesson, { text, attachments }, ctx.message.user_id, to );
+
+                if ( res ) {
+                    ctx.scene.enter( "default" );
+                    ctx.reply( "Домашнее задание успешно создано", null, await createDefaultKeyboard( ctx.session.isAdmin, ctx.session.isContributor, ctx ) );
+                } else {
+                    ctx.scene.enter( "default" );
+                    ctx.reply( "Простите произошла ошибка", null, await createDefaultKeyboard( ctx.session.isAdmin, ctx.session.isContributor, ctx ) );
+                }
+            } else {
+                ctx.reply( "Введите дату на которую задоно задание (в формате дд.ММ.ГГГГ)" );
+                ctx.selectStep( 3 );
+            }
+        } catch ( e ) {
+            console.error( e );
+            ctx.scene.enter( "error" )
+        }
+    }
 )
 //TODO
 module.exports.addChangeScene = new Scene( "addChange",
@@ -436,7 +655,8 @@ module.exports.changeScheduleScene = new Scene( "changeSchedule",
         ctx.session.changingDay = undefined;
 
         try {
-            if ( ( ctx.session.isAdmin ?? ctx.session.isContributor ?? await DataBase.getRole( ctx.message.user_id ) !== Roles.student ) && !ctx.session.Class ) {
+            const needToPickClass = ctx.session.isAdmin ?? await DataBase.getRole( ctx.message.user_id ) === Roles.admin
+            if ( needToPickClass && !ctx.session.Class ) {
                 ctx.session.nextScene = "changeSchedule";
                 ctx.session.step = 0;
                 ctx.scene.enter( "pickClass" );
@@ -487,17 +707,17 @@ module.exports.changeScheduleScene = new Scene( "changeSchedule",
                 ctx.session.isFullFill = true;
                 ctx.session.changingDay = 1;
                 const message = `
-                    Введите новое расписание цифрами через запятую или пробел, выбирая из этих предметов\n
-                    ${lessonsList}\n 
-                    Сначала понедельник:
-                `;
+            Введите новое расписание цифрами через запятую или пробел, выбирая из этих предметов\n
+            ${ lessonsList} \n
+            Сначала понедельник:
+            `;
 
                 ctx.scene.next();
                 ctx.reply( message, null, createBackKeyboard( [ Markup.button( botCommands.leaveEmpty, "primary" ) ], 1 ) );
             } else if ( ( !isNaN( +body ) && +body >= 1 && +body <= 7 ) || Object.values( daysOfWeek ).includes( body ) ) {
                 ctx.session.changingDay = +body;
 
-                const message = `Введите новое расписание цифрами через запятую или пробел, выбирая из этих предметов\n ${lessonsList}`;
+                const message = `Введите новое расписание цифрами через запятую или пробел, выбирая из этих предметов\n ${lessonsList} `;
 
                 ctx.scene.next();
                 ctx.reply( message, null, createBackKeyboard( [ Markup.button( botCommands.leaveEmpty, "primary" ) ], 1 ) );
@@ -530,7 +750,7 @@ module.exports.changeScheduleScene = new Scene( "changeSchedule",
                         ctx.scene.next();
 
                         const newScheduleStr = ctx.session.isFullFill
-                            ? ctx.session.schedule.map( ( lessons, i ) => `${daysOfWeek[ i ]}:\n ${mapListToMessage( lessons )}` )
+                            ? ctx.session.schedule.map( ( lessons, i ) => `${daysOfWeek[ i ]}: \n ${mapListToMessage( lessons )} ` )
                             : mapListToMessage( newLessons );
                         const isEmpty = ctx.session.isFullFill
                             ? ctx.session.schedule.every( lessons => lessons.length === 0 )
@@ -542,7 +762,7 @@ module.exports.changeScheduleScene = new Scene( "changeSchedule",
                         ctx.reply(
                             message,
                             null,
-                            Markup.keyboard( [ Markup.button( "Нет", "negative" ), Markup.button( "Да", "positive" ) ] )
+                            createConfirmKeyboard()
                         );
                     } else {
                         ctx.session.changingDay++;
@@ -595,7 +815,7 @@ module.exports.pickClassScene = new Scene( "pickClass",
 
                 const classesStr = mapListToMessage( Classes.map( ( { name } ) => name ) );
 
-                const message = "Для какого класса вы хотите посмотреть расписание?\n \t" + classesStr;
+                const message = "Для какого класса вы хотите посмотреть расписание?\n" + classesStr;
 
                 ctx.scene.next();
                 const columns = Classes.length % 4 === 0
@@ -655,7 +875,7 @@ async function getScheduleString ( { schedule } ) {
     const message = schedule.map( ( lessons, i ) => {
         const dayName = daysOfWeek[ i ];
 
-        const dayMessage = lessons.length > 0 ? `${dayName}: \n ${mapListToMessage( lessons )}` : "";
+        const dayMessage = lessons.length > 0 ? `${dayName}: \n ${mapListToMessage( lessons )} ` : "";
 
         return dayMessage;
     } ).join( "\n\n" );

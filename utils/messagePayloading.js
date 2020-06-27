@@ -6,6 +6,28 @@ const { DataBase: DB } = require( "../DataBase/DataBase" );
 
 const DataBase = new DB( config.get( "MONGODB_URI" ) );
 
+const contentPropertyNames = {
+    to: "Дата",
+    text: "Текст",
+    lesson: "Урок",
+    createdBy: "Создал"
+}
+//Родительный падеж
+const monthsRP = [
+    "января",
+    "февраля",
+    "марта",
+    "апреля",
+    "мая",
+    "июня",
+    "июля",
+    "августа",
+    "сентября",
+    "октября",
+    "ноября",
+    "декабря"
+];
+
 const userOptions = [
     { label: botCommands.checkHomework, payload: "checkHomework", color: "primary" },
     { label: botCommands.checkSchedule, payload: "checkSchedule", color: "primary" },
@@ -68,6 +90,8 @@ const isAdmin = ( userId ) => {
 const parseAttachments = ( attachments ) => {
     if ( Array.isArray( attachments ) && attachments.every( att => att.type && att[ att.type ] ) ) {
         return attachments.map( att => `${att.type}${att[ att.type ].owner_id}_${att[ att.type ].id}${att[ att.type ].access_key ? "_" + att[ att.type ].access_key : ""}` )
+    } else if ( attachments.type && attachments[ attachments.type ] ) {
+        return `${attachments.type}${attachments[ attachments.type ].owner_id}_${attachments[ attachments.type ].id}${attachments[ attachments.type ].access_key ? "_" + attachments[ attachments.type ].access_key : ""}`
     } else {
         throw new TypeError( "Wrong attachments type" );
     }
@@ -114,6 +138,20 @@ const createBackKeyboard = ( existingButtons = [], columns = 4 ) => {
 
     return Markup.keyboard( existingButtons, { columns } );
 }
+const createConfirmKeyboard = ( existingButtons = [], columns = 4 ) => {
+    existingButtons.push( Markup.button( botCommands.no, "negative" ), Markup.button( botCommands.yes, "positive" ) );
+
+    return Markup.keyboard( existingButtons, { columns } );
+}
+
+const parseDateToStr = Date => `${Date.getDate()} ${monthsRP[ Date.getMonth() ]}`;
+const createContentDiscription = ( { to, lesson, text } ) => {
+    return `
+        ${lesson ? `${contentPropertyNames.lesson}: ${lesson}` : ""}\n
+        ${contentPropertyNames.text}: ${text}\n
+        ${to ? `${contentPropertyNames.to}: ${parseDateToStr( to )}` : ""}\n
+    `
+}
 
 const lessonsList = mapListToMessage( Lessons, 0 );
 
@@ -129,5 +167,8 @@ module.exports = {
     renderContributorMenuKeyboard,
     renderContributorMenu,
     mapListToMessage,
-    lessonsList
+    lessonsList,
+    createContentDiscription,
+    parseDateToStr,
+    createConfirmKeyboard
 };

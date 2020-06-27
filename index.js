@@ -57,6 +57,7 @@ bot.command( "start", async ( ctx ) => {
             ctx.session.isContributor = student.role === Roles.contributor;
             ctx.session.secondName = student.secondName;
             ctx.session.firstName = student.firstName;
+            ctx.session.fullName = student.fullName;
 
             if ( student.registered ) {
                 ctx.scene.enter( "start" );
