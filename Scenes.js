@@ -6,7 +6,6 @@ const
         renderAdminMenu,
         renderAdminMenuKeyboard,
         renderAdminKeyboard,
-        createBackKeyboard,
         createDefaultMenu,
         createDefaultKeyboard,
         renderContributorMenu,
@@ -17,6 +16,8 @@ const
         formMessage,
         createContentDiscription,
         createConfirmKeyboard,
+        createUserInfo,
+        createBackKeyboard,
     } = require( "./utils/messagePayloading.js" ),
     { DataBase: DB } = require( "./DataBase/DataBase.js" ),
     { findNextLessonDate, findNextDayWithLesson } = require( "./DataBase/utils/functions" ),
@@ -136,21 +137,23 @@ module.exports.defaultScene = new Scene( "default",
     async ( ctx ) => {
         try {
             switch ( ctx.message.body.trim() ) {
-                case botCommands.adminPanel: {
+                case botCommands.adminPanel:
                     ctx.scene.enter( 'adminPanel' );
                     break;
-                }
-                case botCommands.contributorPanel: {
+                case botCommands.contributorPanel:
                     ctx.scene.enter( 'contributorPanel' );
                     break;
-                }
-                case botCommands.checkHomework: {
+                case botCommands.checkHomework:
                     ctx.scene.enter( 'default' );
                     ctx.reply( "Дз не буит" )
-                }
-                case botCommands.checkSchedule: {
+                case botCommands.checkSchedule:
                     ctx.scene.enter( 'checkSchedule' );
-                }
+                    break;
+                case botCommands.settings:
+                    ctx.scene.enter( 'settings' );
+                    break;
+                default:
+                    ctx.reply( botCommands.notUnderstood );
             }
         } catch ( e ) {
             ctx.scene.enter( "error" );
@@ -205,6 +208,143 @@ module.exports.checkSchedule = new Scene( "checkSchedule",
 //TODO
 module.exports.checkHomework = new Scene( "checkHomework",
 
+)
+module.exports.checkChanges = new Scene( "checkChanges",
+
+)
+
+module.exports.settings = new Scene( "settings",
+    async ( ctx ) => {
+        try {
+            ctx.session.Student = undefined;
+
+            const Student = await DataBase.getStudentByVkId( ctx.message.user_id );
+
+            if ( Student ) {
+                ctx.session.Student = Student;
+                const { role, class: Class, settings } = Student;
+
+                const { name: className } = await DataBase.getClassBy_Id( Class );
+
+                const message = createUserInfo( { role, className, settings, name: Student.firstName + " " + Student.secondName } );
+
+                ctx.scene.next();
+                ctx.reply( message, null, createBackKeyboard( [ Markup.button( botCommands.changeSettings, "primary" ) ], 1 ) );
+            } else {
+                ctx.scene.enter( "start" );
+            }
+        } catch ( e ) {
+            console.error( e );
+            ctx.scene.enter( "error" );
+        }
+    },
+    ( ctx ) => {
+        try {
+            const { message: { body } } = ctx;
+            if ( body === botCommands.changeSettings || /изменить/i.test( body ) ) {
+                ctx.scene.next();
+                ctx.reply(
+                    "Что вы хотите изменить?",
+                    null,
+                    createBackKeyboard( [
+                        ctx.session.Student.settings.notificationsEnabled
+                            ? [ Markup.button( botCommands.disableNotifications, "primary" ), Markup.button( botCommands.changeNotificationTime, "primary" ) ]
+                            : [ Markup.button( botCommands.enbleNotifications, "primary" ) ],
+                    ] ) );
+            } else if ( body === botCommands.back ) {
+                ctx.scene.enter( "default" );
+            } else {
+                ctx.reply( botCommands.notUnderstood );
+            }
+        } catch ( e ) {
+            console.error( e );
+            ctx.scene.enter( "error" )
+        }
+    },
+    async ( ctx ) => {
+        try {
+            const { message: { body } } = ctx;
+
+            if ( body === botCommands.disableNotifications ) {
+                let { Student } = ctx.session;
+
+                if ( !Student ) {
+                    Student = await DataBase.getStudentByVkId( ctx.message.user_id );
+                }
+
+                Student.settings.notificationsEnabled = false;
+                Student.save();
+
+                ctx.scene.enter( "default" );
+                ctx.reply( "Уведомления отключены", null, await createDefaultKeyboard( ctx.session.isAdmin, ctx.session.isContributor, ctx ) );
+            } else if ( body === botCommands.enbleNotifications ) {
+                let { Student } = ctx.session;
+
+                if ( !Student ) {
+                    Student = await DataBase.getStudentByVkId( ctx.message.user_id );
+                }
+
+                Student.settings.notificationsEnabled = true;
+                Student.save();
+
+                ctx.scene.enter( "default" );
+                ctx.reply( "Уведомления включены", null, await createDefaultKeyboard( ctx.session.isAdmin, ctx.session.isContributor, ctx ) );
+            } else if ( body === botCommands.changeNotificationTime ) {
+                ctx.scene.next();
+                ctx.reply( "Когда вы хотите получать уведомления? (в формате ЧЧ:ММ)", null, createBackKeyboard() );
+            } else if ( body === botCommands.back ) {
+                ctx.scene.enter( "default" );
+            } else {
+                ctx.reply( botCommands.notUnderstood )
+            }
+        } catch ( e ) {
+            console.error( e );
+            ctx.scene.enter( "error" );
+        }
+    },
+    async ( ctx ) => {
+        try {
+            const { message: { body } } = ctx;
+
+            if ( body === botCommands.back ) {
+                ctx.scene.selectStep( 2 );
+                ctx.reply(
+                    "Что вы хотите изменить?",
+                    null,
+                    createBackKeyboard( [ [
+                        Markup.button( botCommands.disableNotifications ),
+                        Markup.button( botCommands.changeNotificationTime )
+                    ] ] ) );
+            } else if ( /[0-9]+:[0-9]+/.test( body ) ) {
+                const [ hrs, mins ] = body.match( /([0-9]+):([0-9]+)/ ).slice( 1 ).map( Number );
+
+                if ( hrs >= 0 && hrs < 24 && mins >= 0 && mins < 60 ) {
+                    let { Student } = ctx.session;
+
+                    if ( !Student ) {
+                        Student = await DataBase.getStudentByVkId( ctx.message.user_id );
+                    }
+
+                    Student.settings.notificationTime = body;
+                    Student.save();
+
+                    ctx.scene.enter( "default" );
+                    ctx.reply(
+                        "Время получения уведомлений успешно изменено на " + body,
+                        null,
+                        await createDefaultKeyboard( ctx.session.isAdmin, ctx.session.isContributor, ctx )
+                    )
+                } else {
+                    ctx.reply( "Проверьте правильность введенного времени, оно должно быть в формате ЧЧ:ММ" )
+                }
+            } else {
+                ctx.reply( "Проверьте правильность введенного времени, оно должно быть в формате ЧЧ:ММ" )
+            }
+        } catch ( e ) {
+            console.error( e );
+            ctx.scene.enter( "error" );
+        }
+    }
 )
 
 module.exports.adminPanelScene = new Scene( 'adminPanel',
@@ -270,7 +410,7 @@ module.exports.adminPanelScene = new Scene( 'adminPanel',
                     break;
                 }
                 default: {
-                    ctx.reply( "Такого варианта не было" );
+                    ctx.reply( botCommands.notUnderstood );
                     break;
                 }
             }
@@ -439,7 +579,7 @@ module.exports.contributorPanelScene = new Scene( 'contributorPanel',
                     break;
                 }
                 default: {
-                    ctx.reply( "Такого варианта не было" );
+                    ctx.reply( botCommands.notUnderstood );
                     break;
                 }
             }
@@ -450,7 +590,6 @@ module.exports.contributorPanelScene = new Scene( 'contributorPanel',
         }
     },
 );
-//TODO
 module.exports.addHomeworkScene = new Scene( "addHomework",
     async ( ctx ) => {
         try {
@@ -645,7 +784,6 @@ module.exports.addHomeworkScene = new Scene( "addHomework",
         }
     }
 )
-//TODO
 module.exports.addChangeScene = new Scene( "addChange",
     async ( ctx ) => {
         try {

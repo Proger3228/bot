@@ -1,8 +1,9 @@
 const { Lessons, Roles } = require( "../DataBase/Models/utils" );
 const config = require( "config" );
 const Markup = require( "node-vk-bot-api/lib/markup" );
-const botCommands = require( "./botCommands" );
 const { DataBase: DB } = require( "../DataBase/DataBase" );
+const botCommands = require( "./botCommands" );
+const { notificationTime } = require( "./botCommands" );
 
 const DataBase = new DB( config.get( "MONGODB_URI" ) );
 
@@ -30,9 +31,11 @@ const monthsRP = [
 
 const userOptions = [
     { label: botCommands.checkHomework, payload: "checkHomework", color: "primary" },
+    { label: botCommands.checkChanges, payload: "checkChanges", color: "primary" },
     { label: botCommands.checkSchedule, payload: "checkSchedule", color: "primary" },
-    { label: botCommands.studentPanel, payload: "studentPanel", color: "primary" },
-]
+    { label: botCommands.settings, payload: "settings", color: "primary" },
+];
+
 const contributorOptions = [
     { label: "Добавить дз", payload: "addHomework", color: "default" },
     { label: "Добавить изменения в расписании", payload: "addChange", color: "default" },
@@ -134,12 +137,20 @@ const createDefaultKeyboard = async ( isAdmin, isContributor, ctx ) => {
 }
 
 const createBackKeyboard = ( existingButtons = [], columns = 4 ) => {
-    existingButtons.push( Markup.button( botCommands.back, "negative", { button: "back" } ) );
+    if ( existingButtons[ 0 ] instanceof Array ) {
+        existingButtons.push( [ Markup.button( botCommands.back, "negative", { button: "back" } ) ] );
+    } else {
+        existingButtons.push( Markup.button( botCommands.back, "negative", { button: "back" } ) );
+    }
 
     return Markup.keyboard( existingButtons, { columns } );
 }
 const createConfirmKeyboard = ( existingButtons = [], columns = 4 ) => {
-    existingButtons.push( Markup.button( botCommands.no, "negative" ), Markup.button( botCommands.yes, "positive" ) );
+    if ( existingButtons[ 0 ] instanceof Array ) {
+        existingButtons.push( [ Markup.button( botCommands.no, "negative" ), Markup.button( botCommands.yes, "positive" ) ] );
+    } else {
+        existingButtons.push( Markup.button( botCommands.no, "negative" ), Markup.button( botCommands.yes, "positive" ) );
+    }
 
     return Markup.keyboard( existingButtons, { columns } );
 }
@@ -149,6 +160,15 @@ const createContentDiscription = ( { to, lesson, text } ) => {
     return `${lesson ? `${contentPropertyNames.lesson}: ${lesson}\n` : ""}
         ${contentPropertyNames.text}: ${text}\n
         ${to ? `${contentPropertyNames.to}: ${parseDateToStr( to )}\n` : ""}`
+}
+const createUserInfo = ( { role, settings: { notificationsEnabled, notificationTime }, className, name } ) => {
+    return `${name}
+    ${botCommands.class}: ${className}
+    ${botCommands.role}: ${botCommands[ role.toLowerCase() ]}
+    ${botCommands.settings}:
+        ${botCommands.notificationsEnabled}: ${botCommands[ notificationsEnabled ]}
+        ${notificationsEnabled ? `${botCommands.notificationTime}: ${notificationTime}` : ""}
+    `
 }
 
 const lessonsList = mapListToMessage( Lessons, 0 );
@@ -168,5 +188,6 @@ module.exports = {
     lessonsList,
     createContentDiscription,
     parseDateToStr,
-    createConfirmKeyboard
+    createConfirmKeyboard,
+    createUserInfo
 };

@@ -39,7 +39,7 @@ const stage = new Stage( ...Object.values( Scenes ) );
 bot.use( session.middleware() );
 bot.use( stage.middleware() );
 
-bot.command( "start", async ( ctx ) => {
+bot.command( /start|начать|меню|help|помощь/i, async ( ctx ) => {
     try {
         const { message: { user_id } } = ctx;
         let student = await DataBase.getStudentByVkId( user_id );
@@ -87,11 +87,15 @@ bot.command( botCommands.contributorPanel, ( ctx ) => ctx.scene.enter( 'contribu
 bot.command( botCommands.back, ( ctx ) => ctx.scene.enter( "default" ) );
 bot.command( botCommands.toStart, ( ctx ) => ctx.scene.enter( "default" ) );
 
-bot.command( /дз/i, ( ctx ) => {
+bot.command( botCommands.checkHomework, ( ctx ) => {
     ctx.reply( "Дз не будет" )
 } );
 
-bot.command( botCommands.checkSchedule, async ( ctx ) => ctx.scene.enter( "checkSchedule" ) )
+bot.command( botCommands.checkSchedule, ( ctx ) => ctx.scene.enter( "checkSchedule" ) )
+
+bot.command( botCommands.settings, ( ctx ) => ctx.scene.enter( "settings" ) )
+
+bot.command( /.+/, ctx => ctx.reply( botCommands.notUnderstood ) );
 
 bot.startPolling();
 

@@ -1,14 +1,36 @@
 module.exports = {
     adminPanel: "Админ меню",
+
     contributorPanel: "Меню редактора",
-    studentPanel: "Меню",
-    toStart: "В начало",
-    back: "Назад",
+
+    settings: "Настройки",
+    changeSettings: "Изменить настройки",
+    role: "Роль",
+    admin: "Админ",
+    contributor: "Редактор",
+    student: "Ученик",
+    class: "Класс",
+    //banned: "Заблокирован",
+    notificationsEnabled: "Уведомления включены",
+    disableNotifications: "Выключить уведомления",
+    enbleNotifications: "Включить уведомления",
+    notificationTime: "Время уведомлений",
+    changeNotificationTime: "Время уведомлений",
+
     checkHomework: "Посмотреть дз",
-    checkSchedule: "Посмотреть расписание",
+    checkChanges: "Посмотреть изменения в расписании",
     leaveEmpty: "Оставить пустым",
     onNextLesson: "На следующий урок",
     onToday: "На сегодня",
+
+    checkSchedule: "Посмотреть расписание",
+
+    toStart: "В начало",
+    back: "Назад",
+    notUnderstood: "Непон",
+
     no: "Нет",
-    yes: "Да"
+    yes: "Да",
+    false: "Нет",
+    true: "Да",
 };
