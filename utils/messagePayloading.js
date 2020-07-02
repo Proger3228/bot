@@ -86,10 +86,6 @@ const renderContributorMenuKeyboard = () => {
     return Markup.keyboard( buttons, { columns: 3 } );
 }
 
-const isAdmin = ( userId ) => {
-    return config.get( "admins" ).includes( userId );
-};
-
 const parseAttachments = ( attachments ) => {
     if ( Array.isArray( attachments ) && attachments.every( att => att.type && att[ att.type ] ) ) {
         return attachments.map( att => `${att.type}${att[ att.type ].owner_id}_${att[ att.type ].id}${att[ att.type ].access_key ? "_" + att[ att.type ].access_key : ""}` )
@@ -106,27 +102,18 @@ const createDefaultMenu = () => {
         ...userOptions.map( ( { label }, i ) => `${i + 1}. ${label}` )
     )
 }
-const createDefaultKeyboard = async ( isAdmin, isContributor, ctx ) => {
+const createDefaultKeyboard = async ( role, ctx ) => {
     try {
         let buttons = userOptions.map( ( { label, payload, color } ) => Markup.button( label, color, { button: payload } ) );
 
-        let role;
-        //TODO change is*Role* flags by role in session
-        if ( isContributor === undefined && !isAdmin ) {
-            role = await DataBase.getRole( ctx.message.user_id ) === Roles.contributor;
-            ctx.session.isContributor = role;
-            isContributor = role;
-        }
-        if ( isAdmin === undefined ) {
-            role = role || await DataBase.getRole( ctx.message.user_id ) === Roles.admin;
-            ctx.session.isAdmin = role;
-            isAdmin = role;
-        }
+        if ( !role ) {
+            role = await DataBase.getRole( ctx.message.user_id );
+        };
 
-        if ( isContributor || isAdmin ) {
+        if ( [ Roles.contributor, Roles.admin ].includes( role ) ) {
             buttons.push( Markup.button( botCommands.contributorPanel, "primary", { button: "contributorPanel" } ) );
         }
-        if ( isAdmin ) {
+        if ( role === Roles.admin ) {
             buttons.push( Markup.button( botCommands.adminPanel, "positive", { button: "adminMenu" } ) );
         }
 
@@ -156,8 +143,10 @@ const createConfirmKeyboard = ( existingButtons = [], columns = 4 ) => {
 }
 
 const parseDateToStr = Date => `${Date.getDate()} ${monthsRP[ Date.getMonth() ]}`;
-const createContentDiscription = ( { to, lesson, text } ) => {
-    return `${lesson ? `${contentPropertyNames.lesson}: ${lesson}\n` : ""}
+
+const createContentDiscription = ( { to, lesson, text }, creatorFullName ) => {
+    return `${creatorFullName ? creatorFullName : ""}
+        ${lesson ? `${contentPropertyNames.lesson}: ${lesson}\n` : ""}
         ${contentPropertyNames.text}: ${text}\n
         ${to ? `${contentPropertyNames.to}: ${parseDateToStr( to )}\n` : ""}`
 }
@@ -171,13 +160,22 @@ const createUserInfo = ( { role, settings: { notificationsEnabled, notificationT
     `
 }
 
+const notifyAllInClass = async ( bot, className, ...messagePayload ) => {
+    const Class = await DataBase.getClassByName( className );
+
+    if ( Class ) {
+        const { students } = await Class.populate( "students" ).execPopulate();
+        bot.sendMessage( students.map( ( { vkId } ) => vkId ), ...messagePayload );
+    }
+}
+
 const lessonsList = mapListToMessage( Lessons, 0 );
 
 module.exports = {
     formMessage,
-    isAdmin,
     renderAdminMenu,
     parseAttachments,
+    notifyAllInClass,
     createDefaultKeyboard,
     renderAdminMenuKeyboard,
     createBackKeyboard,
@@ -189,5 +187,6 @@ module.exports = {
     createContentDiscription,
     parseDateToStr,
     createConfirmKeyboard,
-    createUserInfo
+    createUserInfo,
+    monthsRP
 };

@@ -1,8 +1,9 @@
+const c = require( "config" );
+
 const
     Scene = require( 'node-vk-bot-api/lib/scene' ),
     config = require( 'config' ),
     {
-        isAdmin,
         renderAdminMenu,
         renderAdminMenuKeyboard,
         renderAdminKeyboard,
@@ -13,19 +14,25 @@ const
         lessonsList,
         parseAttachments,
         mapListToMessage,
-        formMessage,
         createContentDiscription,
         createConfirmKeyboard,
         createUserInfo,
         createBackKeyboard,
+        monthsRP,
+        notifyAllInClass,
     } = require( "./utils/messagePayloading.js" ),
     { DataBase: DB } = require( "./DataBase/DataBase.js" ),
-    { findNextLessonDate, findNextDayWithLesson } = require( "./DataBase/utils/functions" ),
+    {
+        findNextLessonDate,
+        findNextDayWithLesson,
+        mapHomeworkByLesson,
+        filterContentByDate,
+        dayInMilliseconds
+    } = require( "./DataBase/utils/functions" ),
     botCommands = require( "./utils/botCommands.js" ),
     { Roles, isValidClassName, Lessons, daysOfWeek } = require( "./DataBase/Models/utils.js" ),
     VK_API = require( "./DataBase/VkAPI/VK_API.js" ),
     Markup = require( "node-vk-bot-api/lib/markup" ),
-    c = require( "config" ),
     DataBase = new DB( config.get( "MONGODB_URI" ) ),
     vk = new VK_API( config.get( "VK_API_KEY" ), config.get( "GROUP_ID" ), config.get( "ALBUM_ID" ) );
 
@@ -50,16 +57,39 @@ const findMaxPhotoResolution = ( photo ) => {
 
     return url;
 }
+const getTomorrowDate = () => new Date( new Date().setDate( new Date().getDate() + 1 ) )
+const isToday = ( date ) => ( Math.abs( date.getTime() - new Date().getTime() ) <= dayInMilliseconds ) && date.getDate() === new Date().getDate();
+
+const isAdmin = async ( ctx ) => {
+    if ( ctx?.session?.role !== undefined ) {
+        return ctx?.session.role === Roles.admin;
+    } else {
+        let role = await DataBase.getRole( ctx.message.user_id );
+        ctx.session.role = role;
+
+        return role === Roles.admin;
+    }
+}
+const isContributor = async ( ctx ) => {
+    if ( ctx?.session?.role !== undefined ) {
+        return [ Roles.admin, Roles.contributor ].includes( ctx.session.role );
+    } else {
+        let role = await DataBase.getRole( ctx.message.user_id );
+        ctx.session.role = role;
+
+        return [ Roles.admin, Roles.contributor ].includes( role );
+    }
+}
 
 module.exports.errorScene = new Scene( "error",
     async ( ctx ) => {
-        ctx.reply( "Простите произошла ошибка", null, await createDefaultKeyboard( ctx.session.isAdmin, ctx.session.isContributor, ctx ) );
+        ctx.reply( "Простите произошла ошибка", null, await createDefaultKeyboard( ctx.session.role, ctx ) );
     }
 )
 
 module.exports.startScene = new Scene( "start",
     async ( ctx ) => {
-        ctx.reply( `Привет ${ctx.session.firstName} ${ctx.session.secondName}`, null, await createDefaultKeyboard( ctx.session.isAdmin, ctx.session.isContributor, ctx ) );
+        ctx.reply( `Привет ${ctx.session.firstName} ${ctx.session.secondName}`, null, await createDefaultKeyboard( ctx.session.role, ctx ) );
         ctx.scene.enter( "default" );
     }
 )
@@ -98,13 +128,13 @@ module.exports.registerScene = new Scene( "register",
             if ( Class ) {
                 await DataBase.addStudentToClass( userId, spacelessClassName );
                 leave();
-                ctx.reply( "Вы успешно зарегестрированны", null, await createDefaultKeyboard( ctx.session.isAdmin, ctx.session.isContributor, ctx ) );
+                ctx.reply( "Вы успешно зарегестрированны", null, await createDefaultKeyboard( ctx.session.role, ctx ) );
             } else {
                 const Class = await DataBase.createClass( spacelessClassName );
                 if ( Class ) {
                     await DataBase.addStudentToClass( userId, spacelessClassName );
                     leave();
-                    ctx.reply( "Вы успешно зарегестрированны", null, null, await createDefaultKeyboard( ctx.session.isAdmin, ctx.session.isContributor, ctx ) );
+                    ctx.reply( "Вы успешно зарегестрированны", null, null, await createDefaultKeyboard( ctx.session.role, ctx ) );
                 }
             }
         } else {
@@ -119,7 +149,7 @@ module.exports.defaultScene = new Scene( "default",
         try {
             ctx.scene.next();
             if ( ctx.session.userId ) {
-                ctx.reply( createDefaultMenu(), null, await createDefaultKeyboard( ctx.session.isAdmin, ctx.session.isContributor, ctx ) );
+                ctx.reply( createDefaultMenu(), null, await createDefaultKeyboard( ctx.session.role, ctx ) );
             } else {
                 const student = await DataBase.getStudentByVkId( ctx.message.user_id );
 
@@ -136,24 +166,59 @@ module.exports.defaultScene = new Scene( "default",
     },
     async ( ctx ) => {
         try {
-            switch ( ctx.message.body.trim() ) {
-                case botCommands.adminPanel:
+            if ( /^(start|начать|меню|help|помощь)$/i.test( ctx.message.body ) ) {
+                ctx.scene.enter( "start" );
+                return;
+            }
+
+            switch ( ctx.message.body ) {
+                case botCommands.adminPanel: {
                     ctx.scene.enter( 'adminPanel' );
                     break;
-                case botCommands.contributorPanel:
+                }
+                case botCommands.contributorPanel: {
                     ctx.scene.enter( 'contributorPanel' );
                     break;
-                case botCommands.checkHomework:
-                    ctx.scene.enter( 'default' );
-                    ctx.reply( "Дз не буит" )
-                case botCommands.checkSchedule:
+                }
+                case botCommands.checkHomework: {
+                    ctx.scene.enter( 'checkHomework' );
+                    break;
+                }
+                case botCommands.checkChanges: {
+                    ctx.scene.enter( "checkChanges" );
+                    break;
+                }
+                case botCommands.checkSchedule: {
                     ctx.scene.enter( 'checkSchedule' );
                     break;
-                case botCommands.settings:
+                }
+                case botCommands.settings: {
                     ctx.scene.enter( 'settings' );
                     break;
-                default:
+                }
+                case botCommands.start: {
+                    ctx.scene.enter( 'start' );
+                    break;
+                }
+                case "1": {
+                    ctx.scene.enter( 'checkHomework' );
+                    break;
+                }
+                case "2": {
+                    ctx.scene.enter( "checkChanges" );
+                    break;
+                }
+                case "3": {
+                    ctx.scene.enter( 'checkSchedule' );
+                    break;
+                }
+                case "4": {
+                    ctx.scene.enter( 'settings' );
+                    break;
+                }
+                default: {
                     ctx.reply( botCommands.notUnderstood );
+                }
             }
         } catch ( e ) {
             ctx.scene.enter( "error" );
@@ -164,10 +229,9 @@ module.exports.defaultScene = new Scene( "default",
 module.exports.checkSchedule = new Scene( "checkSchedule",
     async ( ctx ) => {
         try {
-            const needToPickClass = ctx.session.isAdmin ?? await DataBase.getRole( ctx.message.user_id ) === Roles.admin
+            const needToPickClass = await isAdmin( ctx );
             if ( needToPickClass && !ctx.session.Class ) {
                 ctx.session.nextScene = "checkSchedule";
-                ctx.session.step = 0;
                 ctx.scene.enter( "pickClass" );
             } else {
                 const Student = await DataBase.getStudentByVkId( ctx.session.userId || ctx.message.user_id );
@@ -184,19 +248,19 @@ module.exports.checkSchedule = new Scene( "checkSchedule",
 
                         if ( message.trim() === "" ) {
                             ctx.scene.enter( "default" );
-                            ctx.reply( "Для данного класса пока что не существует расписания", null, await createDefaultKeyboard( ctx.session.isAdmin, ctx.session.isContributor, ctx ) );
+                            ctx.reply( "Для данного класса пока что не существует расписания", null, await createDefaultKeyboard( ctx.session.role, ctx ) );
                         }
                         else {
                             ctx.scene.enter( 'default' );
-                            ctx.reply( message, null, await createDefaultKeyboard( ctx.session.isAdmin, ctx.session.isContributor, ctx ) );
+                            ctx.reply( message, null, await createDefaultKeyboard( ctx.session.role, ctx ) );
                         }
                     } else {
                         ctx.scene.enter( 'register' );
                         ctx.reply( "Сначала вам необходимо зарегестрироваться, введите имя класса в котором вы учитесь" );
                     }
                 } else {
-                    console.log( "user are not existing", ctx.session.userId );
-                    throw new Error();
+                    console.log( "User are not existing", ctx.session.userId );
+                    throw new Error( "Student is not existing" );
                 }
             }
         } catch ( e ) {
@@ -207,10 +271,210 @@ module.exports.checkSchedule = new Scene( "checkSchedule",
 )
 //TODO
 module.exports.checkHomework = new Scene( "checkHomework",
+    async ( ctx ) => {
+        try {
+            const needToPickClass = await isAdmin( ctx );
+            if ( needToPickClass && !ctx.session.Class ) {
+                ctx.session.nextScene = "checkHomework";
+                ctx.scene.enter( "pickClass" );
+            } else {
+                const Student = await DataBase.getStudentByVkId( ctx.session.userId || ctx.message.user_id );
+                if ( Student ) {
+                    if ( Student.registered ) {
+                        if ( !ctx.session.Class ) ctx.session.Class = await DataBase.getClassBy_Id( Student.class );
 
+                        ctx.scene.next();
+                        ctx.reply(
+                            "На какую дату вы хотите узнать задание? (в формате дд.ММ.ГГГГ)",
+                            null,
+                            createBackKeyboard( [ [ Markup.button( botCommands.onTomorrow, "positive" ) ] ] )
+                        )
+                    } else {
+                        ctx.scene.enter( "register" );
+                    }
+                } else {
+                    throw new Error( "Student is not exists" );
+                }
+            }
+        } catch ( e ) {
+            console.error( e );
+            ctx.scene.enter( "error" )
+        }
+    },
+    async ( ctx ) => {
+        try {
+            const { message: { body } } = ctx;
+
+            if ( body === botCommands.back ) {
+                const isPickedClass = await isAdmin( ctx );
+                if ( isPickedClass ) {
+                    ctx.session.Class = undefined;
+                    ctx.scene.enter( "checkHomework" );
+                } else {
+                    ctx.scene.enter( "default" );
+                }
+                return;
+            }
+
+            let date = null;
+
+            if ( body === botCommands.onTomorrow ) {
+                date = getTomorrowDate();
+            } else if ( /[0-9]+\.[0-9]+\.[0-9]/.test( body ) ) {
+                const [ day, month, year ] = body.match( /([0-9]+)\.([0-9]+)\.([0-9]+)/ ).slice( 1 ).map( Number );
+                if (
+                    month >= 0 &&
+                    month < 12 &&
+                    day > 0 &&
+                    day < maxDatesPerMonth[ month - 1 ] &&
+                    year >= ( new Date() ).getFullYear()
+                ) {
+                    date = new Date( year, month - 1, day );
+                } else {
+                    ctx.reply( "Проверьте правильность введенной даты" );
+                    return;
+                }
+            } else {
+                ctx.reply( "Дата должна быть в формате дд.ММ.ГГГГ" );
+                return;
+            }
+
+            if ( date ) {
+                const homework = filterContentByDate( ctx.session.Class.homework, date );
+                ctx.session.Class = undefined;
+                if ( homework.length === 0 ) {
+                    ctx.reply( "На данный день не заданно ни одного задания" );
+                    ctx.scene.enter( "default" );
+                } else {
+                    const parsedHomework = mapHomeworkByLesson( homework );
+
+                    let message = `Задание на ${date.getDate()} ${monthsRP[ date.getMonth() ]}\n`;
+
+                    ctx.reply( message, null, await createDefaultKeyboard( ctx.session.role, ctx ) )
+
+                    let c = 0;
+                    for ( const [ lesson, homework ] of parsedHomework ) {
+                        let homeworkMsg = `${lesson}:\n`;
+                        let attachments = [];
+                        for ( let i = 0; i < homework.length; i++ ) {
+                            const hw = homework[ i ];
+                            homeworkMsg += hw.text ? `${i + 1}: ${hw.text}\n` : "";
+                            attachments = attachments.concat( hw.attachments?.map( ( { value } ) => value ) );
+                        }
+
+                        await setTimeout( () => ctx.reply( homeworkMsg, attachments ), ++c * 15 );
+                    }
+
+                    ctx.scene.enter( "default" );
+                }
+            } else {
+                throw new Error( "There's no date" )
+            }
+        } catch ( e ) {
+            console.error( e );
+            ctx.scene.enter( "error" );
+        }
+    }
 )
 module.exports.checkChanges = new Scene( "checkChanges",
+    async ( ctx ) => {
+        try {
+            const needToPickClass = await isAdmin( ctx );
+            if ( needToPickClass && !ctx.session.Class ) {
+                ctx.session.nextScene = "checkChanges";
+                ctx.scene.enter( "pickClass" );
+            } else {
+                const Student = await DataBase.getStudentByVkId( ctx.session.userId || ctx.message.user_id );
+                if ( Student ) {
+                    if ( Student.registered ) {
+                        if ( !ctx.session.Class ) ctx.session.Class = await DataBase.getClassBy_Id( Student.class );
 
+                        ctx.scene.next();
+                        ctx.reply(
+                            "На какую дату вы хотите узнать изменения? (в формате дд.ММ.ГГГГ)",
+                            null,
+                            createBackKeyboard( [ [ Markup.button( botCommands.onTomorrow, "positive" ) ] ] )
+                        )
+                    } else {
+                        ctx.scene.enter( "register" );
+                    }
+                } else {
+                    throw new Error( "Student is not exists" );
+                }
+            }
+        } catch ( e ) {
+            console.error( e );
+            ctx.scene.enter( "error" )
+        }
+    },
+    async ( ctx ) => {
+        try {
+            const { message: { body } } = ctx;
+
+            if ( body === botCommands.back ) {
+                const isPickedClass = await isAdmin( ctx );
+                if ( isPickedClass ) {
+                    ctx.session.Class = undefined;
+                    ctx.scene.enter( "checkChanges" );
+                } else {
+                    ctx.scene.enter( "default" );
+                }
+                return;
+            }
+
+            let date = null;
+
+            if ( body === botCommands.onToday ) {
+                date = new Date();
+            } else if ( body === botCommands.onTomorrow ) {
+                date = getTomorrowDate();
+            } else if ( /[0-9]+\.[0-9]+\.[0-9]/.test( body ) ) {
+                const [ day, month, year ] = body.match( /([0-9]+)\.([0-9]+)\.([0-9]+)/ ).slice( 1 ).map( Number );
+                if (
+                    month >= 0 &&
+                    month < 12 &&
+                    day > 0 &&
+                    day < maxDatesPerMonth[ month - 1 ] &&
+                    year >= ( new Date() ).getFullYear()
+                ) {
+                    date = new Date( year, month - 1, day );
+                } else {
+                    ctx.reply( "Проверьте правильность введенной даты" );
+                    return;
+                }
+            } else {
+                ctx.reply( "Дата должна быть в формате дд.ММ.ГГГГ" );
+                return;
+            }
+
+            if ( date ) {
+                const changes = filterContentByDate( ctx.session.Class.changes, date );
+                ctx.session.Class = undefined;
+                if ( changes.length === 0 ) {
+                    ctx.reply( "На данный день нет ни одного изменения" );
+                    ctx.scene.enter( "default" );
+                } else {
+                    let message = `Изменения на ${date.getDate()} ${monthsRP[ date.getMonth() ]}\n`;
+
+                    let attachments = [];
+                    for ( let i = 0; i < changes.length; i++ ) {
+                        const change = changes[ i ];
+                        message += change.text ? `${i + 1}: ${change.text}\n` : "";
+                        attachments = attachments.concat( change.attachments?.map( ( { value } ) => value ) );
+                    }
+
+                    ctx.reply( message, attachments );
+
+                    ctx.scene.enter( "default" );
+                }
+            } else {
+                throw new Error( "There's no date" )
+            }
+        } catch ( e ) {
+            console.error( e );
+            ctx.scene.enter( "error" );
+        }
+    }
 )
 
 module.exports.settings = new Scene( "settings",
@@ -276,7 +540,7 @@ module.exports.settings = new Scene( "settings",
                 Student.save();
 
                 ctx.scene.enter( "default" );
-                ctx.reply( "Уведомления отключены", null, await createDefaultKeyboard( ctx.session.isAdmin, ctx.session.isContributor, ctx ) );
+                ctx.reply( "Уведомления отключены", null, await createDefaultKeyboard( ctx.session.role, ctx ) );
             } else if ( body === botCommands.enbleNotifications ) {
                 let { Student } = ctx.session;
 
@@ -288,7 +552,7 @@ module.exports.settings = new Scene( "settings",
                 Student.save();
 
                 ctx.scene.enter( "default" );
-                ctx.reply( "Уведомления включены", null, await createDefaultKeyboard( ctx.session.isAdmin, ctx.session.isContributor, ctx ) );
+                ctx.reply( "Уведомления включены", null, await createDefaultKeyboard( ctx.session.role, ctx ) );
             } else if ( body === botCommands.changeNotificationTime ) {
                 ctx.scene.next();
                 ctx.reply( "Когда вы хотите получать уведомления? (в формате ЧЧ:ММ)", null, createBackKeyboard() );
@@ -304,7 +568,9 @@ module.exports.settings = new Scene( "settings",
     },
     async ( ctx ) => {
         try {
-            const { message: { body } } = ctx;
+            let { message: { body } } = ctx;
+
+            body = body.replace( /\./g, ":" );
 
             if ( body === botCommands.back ) {
                 ctx.scene.selectStep( 2 );
@@ -332,7 +598,7 @@ module.exports.settings = new Scene( "settings",
                     ctx.reply(
                         "Время получения уведомлений успешно изменено на " + body,
                         null,
-                        await createDefaultKeyboard( ctx.session.isAdmin, ctx.session.isContributor, ctx )
+                        await createDefaultKeyboard( ctx.session.role, ctx )
                     )
                 } else {
                     ctx.reply( "Проверьте правильность введенного времени, оно должно быть в формате ЧЧ:ММ" )
@@ -349,7 +615,7 @@ module.exports.settings = new Scene( "settings",
 
 module.exports.adminPanelScene = new Scene( 'adminPanel',
     async ( ctx ) => {
-        if ( ctx.session.isAdmin ?? ( await DataBase.getRole( ctx.message.user_id ) === Roles.admin ) ) {
+        if ( await isAdmin( ctx ) ) {
             ctx.scene.next();
             ctx.reply( renderAdminMenu(), null, renderAdminMenuKeyboard() );
         } else {
@@ -454,7 +720,7 @@ module.exports.addRedactor = new Scene( "addRedactor",
                         const { first_name, last_name } = response[ 0 ];
                         Student = await DataBase.createStudent( id, { firstName: first_name, lastName: last_name } );
                     } else {
-                        throw new Error();
+                        throw new Error( JSON.stringify( response ) );
                     }
                 }
 
@@ -550,7 +816,7 @@ module.exports.createClassScene = new Scene( 'createClass',
 
 module.exports.contributorPanelScene = new Scene( 'contributorPanel',
     async ( ctx ) => {
-        if ( ( ctx.session.isContributor || ctx.session.isAdmin ) ?? ( await DataBase.getRole( ctx.message.user_id ) !== Roles.student ) ) {
+        if ( await isContributor( ctx ) ) {
             ctx.scene.next();
             ctx.reply( renderContributorMenu(), null, renderContributorMenuKeyboard() );
         } else {
@@ -598,7 +864,7 @@ module.exports.addHomeworkScene = new Scene( "addHomework",
                 return;
             }
 
-            const needToPickClass = ctx.session.isAdmin ?? await DataBase.getRole( ctx.message.user_id ) === Roles.admin
+            const needToPickClass = await isAdmin( ctx );
             if ( needToPickClass && !ctx.session.Class ) {
                 ctx.session.nextScene = "addHomework";
                 ctx.scene.enter( "pickClass" );
@@ -616,8 +882,8 @@ module.exports.addHomeworkScene = new Scene( "addHomework",
                         ctx.reply( "Сначала вам необходимо зарегестрироваться, введите имя класса в котором вы учитесь" );
                     }
                 } else {
-                    console.log( "user are not existing", ctx.session.userId );
-                    throw new Error();
+                    console.log( "User is not existing", ctx.session.userId );
+                    throw new Error( "Student is not existing" );
                 }
             }
         } catch ( e ) {
@@ -630,7 +896,7 @@ module.exports.addHomeworkScene = new Scene( "addHomework",
             const { message: { body = "", attachments = [] } } = ctx;
 
             if ( body === botCommands.back ) {
-                const peekedClass = ( ctx.session.isAdmin || ctx.session.isContributor ) ?? await DataBase.getRole( ctx.message.user_id ) !== Roles.student;
+                const peekedClass = await isContributor( ctx );
                 //TODO только админы могут выбирать класс редакторы работают в пределах своего класса
                 if ( peekedClass ) {
                     ctx.session.Class = undefined;
@@ -750,7 +1016,7 @@ module.exports.addHomeworkScene = new Scene( "addHomework",
                 )}
                 `, ctx.session.newHomework.attachments.map( ( { value } ) => value ), createConfirmKeyboard() );
             } else {
-                throw new Error();
+                throw new Error( "Threre's no to prop in new Homework" );
             }
         } catch ( e ) {
             console.error( e );
@@ -769,10 +1035,10 @@ module.exports.addHomeworkScene = new Scene( "addHomework",
 
                 if ( res ) {
                     ctx.scene.enter( "default" );
-                    ctx.reply( "Домашнее задание успешно создано", null, await createDefaultKeyboard( ctx.session.isAdmin, ctx.session.isContributor, ctx ) );
+                    ctx.reply( "Домашнее задание успешно создано", null, await createDefaultKeyboard( ctx.session.role, ctx ) );
                 } else {
                     ctx.scene.enter( "default" );
-                    ctx.reply( "Простите произошла ошибка", null, await createDefaultKeyboard( ctx.session.isAdmin, ctx.session.isContributor, ctx ) );
+                    ctx.reply( "Простите произошла ошибка", null, await createDefaultKeyboard( ctx.session.role, ctx ) );
                 }
             } else {
                 ctx.reply( "Введите дату на которую задоно задание (в формате дд.ММ.ГГГГ)" );
@@ -792,7 +1058,7 @@ module.exports.addChangeScene = new Scene( "addChange",
                 return;
             }
 
-            const needToPickClass = ctx.session.isAdmin ?? await DataBase.getRole( ctx.message.user_id ) === Roles.admin
+            const needToPickClass = await isAdmin( ctx );
             if ( needToPickClass && !ctx.session.Class ) {
                 ctx.session.nextScene = "addChange";
                 ctx.scene.enter( "pickClass" );
@@ -810,8 +1076,8 @@ module.exports.addChangeScene = new Scene( "addChange",
                         ctx.reply( "Сначала вам необходимо зарегестрироваться, введите имя класса в котором вы учитесь" );
                     }
                 } else {
-                    console.log( "user are not existing", ctx.session.userId );
-                    throw new Error();
+                    console.log( "User is not existing", ctx.session.userId );
+                    throw new Error( "Student is not existing" );
                 }
             }
         } catch ( e ) {
@@ -824,7 +1090,7 @@ module.exports.addChangeScene = new Scene( "addChange",
             const { message: { body = "", attachments = [] } } = ctx;
 
             if ( body === botCommands.back ) {
-                const peekedClass = ( ctx.session.isAdmin || ctx.session.isContributor ) ?? await DataBase.getRole( ctx.message.user_id ) !== Roles.student;
+                const peekedClass = await isAdmin( ctx );
                 //TODO только админы могут выбирать класс редакторы работают в пределах своего класса
                 if ( peekedClass ) {
                     ctx.session.Class = undefined;
@@ -848,7 +1114,10 @@ module.exports.addChangeScene = new Scene( "addChange",
                 ctx.reply(
                     "Введите дату изменения (в формате дд.ММ.ГГГГ)",
                     null,
-                    createBackKeyboard( [ Markup.button( botCommands.onToday, "positive" ) ], 1 )
+                    createBackKeyboard( [ [
+                        Markup.button( botCommands.onToday, "positive" ),
+                        Markup.button( botCommands.onTomorrow, "positive" ),
+                    ] ] )
                 )
             } else {
                 ctx.reply( "Отправлять можно только фото" );
@@ -870,6 +1139,8 @@ module.exports.addChangeScene = new Scene( "addChange",
 
             if ( body === botCommands.onToday ) {
                 ctx.session.newChange.to = new Date();
+            } else if ( body === botCommands.onTomorrow ) {
+                ctx.session.newChange.to = getTomorrowDate();
             } else if ( /[0-9]+\.[0-9]+\.[0-9]/.test( body ) ) {
                 const [ day, month, year ] = body.match( /([0-9]+)\.([0-9]+)\.([0-9]+)/ ).slice( 1 ).map( Number );
                 if (
@@ -903,7 +1174,7 @@ module.exports.addChangeScene = new Scene( "addChange",
                 )}
                 `, ctx.session.newChange.attachments.map( ( { value } ) => value ), createConfirmKeyboard() );
             } else {
-                throw new Error();
+                throw new Error( "There's no to prop in new change" );
             }
         } catch ( e ) {
             console.error( e );
@@ -922,10 +1193,13 @@ module.exports.addChangeScene = new Scene( "addChange",
 
                 if ( res ) {
                     ctx.scene.enter( "default" );
-                    ctx.reply( "Изменение в расписании успешно создано", null, await createDefaultKeyboard( ctx.session.isAdmin, ctx.session.isContributor, ctx ) );
+                    ctx.reply( "Изменение в расписании успешно создано", null, await createDefaultKeyboard( ctx.session.role, ctx ) );
+                    if ( isToday( to ) ) {
+                        notifyAllInClass( ctx.bot, className, `На сегодня появилось новое изменение в расписании:\n ${text}`, attachments );
+                    }
                 } else {
                     ctx.scene.enter( "default" );
-                    ctx.reply( "Простите произошла ошибка", null, await createDefaultKeyboard( ctx.session.isAdmin, ctx.session.isContributor, ctx ) );
+                    ctx.reply( "Простите произошла ошибка", null, await createDefaultKeyboard( ctx.session.role, ctx ) );
                 }
             } else {
                 ctx.reply(
@@ -947,7 +1221,7 @@ module.exports.changeScheduleScene = new Scene( "changeSchedule",
         ctx.session.changingDay = undefined;
 
         try {
-            const needToPickClass = ctx.session.isAdmin ?? await DataBase.getRole( ctx.message.user_id ) === Roles.admin
+            const needToPickClass = await isAdmin( ctx );
             if ( needToPickClass && !ctx.session.Class ) {
                 ctx.session.nextScene = "changeSchedule";
                 ctx.session.step = 0;
@@ -978,8 +1252,8 @@ module.exports.changeScheduleScene = new Scene( "changeSchedule",
                         ctx.reply( "Сначала вам необходимо зарегестрироваться, введите имя класса в котором вы учитесь" );
                     }
                 } else {
-                    console.log( "user are not existing", ctx.session.userId );
-                    throw new Error();
+                    console.log( "User are not existing", ctx.session.userId );
+                    throw new Error( "Student is not existing" );
                 }
             }
         } catch ( e ) {
@@ -1085,7 +1359,7 @@ module.exports.changeScheduleScene = new Scene( "changeSchedule",
                     ctx.reply( "Расписание успешно обновлено", null, await createDefaultKeyboard( true, false ) );
                 } else {
                     console.log( "Schedule is ", schedule, "Class is ", Class );
-                    throw new Error();
+                    throw new Error( "Schedule is " + JSON.stringify( schedule ) + "\nClass is " + JSON.stringify( Class ) );
                 }
             } else {
                 ctx.reply( "Введите новое расписание" );

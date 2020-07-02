@@ -22,6 +22,7 @@ module.exports = {
     leaveEmpty: "Оставить пустым",
     onNextLesson: "На следующий урок",
     onToday: "На сегодня",
+    onTomorrow: "На завтра",
 
     checkSchedule: "Посмотреть расписание",
 
