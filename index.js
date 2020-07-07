@@ -145,10 +145,12 @@ async function notifyStudents () {
 notifyStudents();
 setInterval( notifyStudents, 1000 * 60 );
 
-http.createServer( ( req, res ) => {
-    res.setHeader( "Content-Type", "application/json" );
-    res.write( "Bot is working" );
-    res.end();
-} ).listen( 3000 );
+const requestListener = function ( req, res ) {
+    res.writeHead( 200 );
+    res.end( 'Hello, World!' );
+}
+
+const server = http.createServer( requestListener );
+server.listen( 8080 );
 
 
