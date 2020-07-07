@@ -9,6 +9,10 @@
     "logs": "heroku logs --tail",
     "start:debug": "node --inspect index -i"
   },
+  "engines": {
+    "npm": "6.x",
+    "node": "14.x"
+  },
   "author": "",
   "license": "ISC",
   "dependencies": {
