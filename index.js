@@ -4,10 +4,10 @@ const
     Session = require( 'node-vk-bot-api/lib/session' ),
     Stage = require( 'node-vk-bot-api/lib/stage' ),
     config = require( 'config' ),
-    { DataBase: DB } = require( "./DataBase/DataBase.js" ),
-    { dayInMilliseconds, mapHomeworkByLesson } = require( "./DataBase/utils/functions" ),
+    { DataBase: DB } = require( "bot-database/DataBase.js" ),
+    { dayInMilliseconds, mapHomeworkByLesson } = require( "bot-database/utils/functions" ),
     bot = new VkBot( config.get( "ALT_TOKEN" ) ),
-    VK_API = require( "./DataBase/VkAPI/VK_API" ),
+    VK_API = require( "bot-database/VkAPI/VK_API" ),
     Scenes = require( "./Scenes.js" ),
     botCommands = require( "./utils/botCommands.js" ),
     http = require( "http" );

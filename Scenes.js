@@ -21,17 +21,17 @@ const
         monthsRP,
         notifyAllInClass,
     } = require( "./utils/messagePayloading.js" ),
-    { DataBase: DB } = require( "./DataBase/DataBase.js" ),
+    { DataBase: DB } = require( "bot-database/DataBase.js" ),
     {
         findNextLessonDate,
         findNextDayWithLesson,
         mapHomeworkByLesson,
         filterContentByDate,
         dayInMilliseconds
-    } = require( "./DataBase/utils/functions" ),
+    } = require( "bot-database/utils/functions" ),
     botCommands = require( "./utils/botCommands.js" ),
-    { Roles, isValidClassName, Lessons, daysOfWeek } = require( "./DataBase/Models/utils.js" ),
-    VK_API = require( "./DataBase/VkAPI/VK_API.js" ),
+    { Roles, isValidClassName, Lessons, daysOfWeek } = require( "bot-database/Models/utils.js" ),
+    VK_API = require( "bot-database/VkAPI/VK_API.js" ),
     Markup = require( "node-vk-bot-api/lib/markup" ),
     DataBase = new DB( config.get( "MONGODB_URI" ) ),
     vk = new VK_API( config.get( "VK_API_KEY" ), config.get( "GROUP_ID" ), config.get( "ALBUM_ID" ) );

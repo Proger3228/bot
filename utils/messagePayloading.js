@@ -1,7 +1,7 @@
-const { Lessons, Roles } = require( "../DataBase/Models/utils" );
+const { Lessons, Roles } = require( "bot-database/Models/utils" );
 const config = require( "config" );
 const Markup = require( "node-vk-bot-api/lib/markup" );
-const { DataBase: DB } = require( "../DataBase/DataBase" );
+const { DataBase: DB } = require( "bot-database/DataBase" );
 const botCommands = require( "./botCommands" );
 const { notificationTime } = require( "./botCommands" );
 
