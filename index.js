@@ -10,8 +10,7 @@ const
     VK_API = require( "./DataBase/VkAPI/VK_API" ),
     Scenes = require( "./Scenes.js" ),
     botCommands = require( "./utils/botCommands.js" ),
-    { Roles } = require( "./DataBase/Models/utils" ),
-    { monthsRP } = require( "./utils/messagePayloading" );
+    http = require( "http" );
 
 const DataBase = new DB( config.get( "MONGODB_URI" ) );
 
@@ -134,6 +133,8 @@ async function notifyStudents () {
 
                     await setTimeout( () => bot.sendMessage( ids, homeworkMsg, attachments ), ++c * 15 );
                 }
+
+                return parsedHomework;
             }
         }
     } catch ( e ) {
@@ -141,7 +142,13 @@ async function notifyStudents () {
     }
 }
 
-
+notifyStudents();
 setInterval( notifyStudents, 1000 * 60 );
+
+http.createServer( ( req, res ) => {
+    res.setHeader( "Content-Type", "application/json" );
+    res.write( "Bot is working" );
+    res.end();
+} ).listen( 3000 );
 
 
